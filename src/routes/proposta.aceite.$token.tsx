@@ -47,7 +47,7 @@ const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(n) || 0);
 
 function AceitarProposta() {
-  const { token } = useParams();
+  const { token } = Route.useParams();
   const [state, setState] = useState<State>("loading");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");

@@ -30,7 +30,7 @@ const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(n) || 0);
 
 function DevisDetail() {
-  const { id } = useParams();
+  const { id } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);

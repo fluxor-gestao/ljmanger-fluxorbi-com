@@ -702,6 +702,6 @@ function Comercial() {
   );
 }
 
-export const Route = createFileRoute("/_authenticated/comercial/")({
+export const Route = createFileRoute("/_authenticated/comercial")({
   component: Comercial,
 });
