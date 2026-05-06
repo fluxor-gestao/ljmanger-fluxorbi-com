@@ -22,7 +22,7 @@ import { Route as AuthenticatedBiRouteImport } from './routes/_authenticated/bi'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as PropostaAceiteTokenRouteImport } from './routes/proposta.aceite.$token'
 import { Route as AuthenticatedAdminApiKeysRouteImport } from './routes/_authenticated/admin.api-keys'
-import { Route as AuthenticatedComercialDevisIdRouteImport } from './routes/_authenticated/comercial.devis.$id'
+import { Route as AuthenticatedComercialDevisIdRouteImport } from './routes/_authenticated/comercial_.devis.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -92,9 +92,9 @@ const AuthenticatedAdminApiKeysRoute =
   } as any)
 const AuthenticatedComercialDevisIdRoute =
   AuthenticatedComercialDevisIdRouteImport.update({
-    id: '/devis/$id',
-    path: '/devis/$id',
-    getParentRoute: () => AuthenticatedComercialRoute,
+    id: '/comercial_/devis/$id',
+    path: '/comercial/devis/$id',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -102,7 +102,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/bi': typeof AuthenticatedBiRoute
-  '/comercial': typeof AuthenticatedComercialRouteWithChildren
+  '/comercial': typeof AuthenticatedComercialRoute
   '/conciliacao': typeof AuthenticatedConciliacaoRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/gestao': typeof AuthenticatedGestaoRoute
@@ -117,7 +117,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/bi': typeof AuthenticatedBiRoute
-  '/comercial': typeof AuthenticatedComercialRouteWithChildren
+  '/comercial': typeof AuthenticatedComercialRoute
   '/conciliacao': typeof AuthenticatedConciliacaoRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/gestao': typeof AuthenticatedGestaoRoute
@@ -134,7 +134,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/bi': typeof AuthenticatedBiRoute
-  '/_authenticated/comercial': typeof AuthenticatedComercialRouteWithChildren
+  '/_authenticated/comercial': typeof AuthenticatedComercialRoute
   '/_authenticated/conciliacao': typeof AuthenticatedConciliacaoRoute
   '/_authenticated/financeiro': typeof AuthenticatedFinanceiroRoute
   '/_authenticated/gestao': typeof AuthenticatedGestaoRoute
@@ -142,7 +142,7 @@ export interface FileRoutesById {
   '/_authenticated/operacao': typeof AuthenticatedOperacaoRoute
   '/_authenticated/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
   '/proposta/aceite/$token': typeof PropostaAceiteTokenRoute
-  '/_authenticated/comercial/devis/$id': typeof AuthenticatedComercialDevisIdRoute
+  '/_authenticated/comercial_/devis/$id': typeof AuthenticatedComercialDevisIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -190,7 +190,7 @@ export interface FileRouteTypes {
     | '/_authenticated/operacao'
     | '/_authenticated/admin/api-keys'
     | '/proposta/aceite/$token'
-    | '/_authenticated/comercial/devis/$id'
+    | '/_authenticated/comercial_/devis/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -293,12 +293,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminApiKeysRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/comercial/devis/$id': {
-      id: '/_authenticated/comercial/devis/$id'
-      path: '/devis/$id'
+    '/_authenticated/comercial_/devis/$id': {
+      id: '/_authenticated/comercial_/devis/$id'
+      path: '/comercial/devis/$id'
       fullPath: '/comercial/devis/$id'
       preLoaderRoute: typeof AuthenticatedComercialDevisIdRouteImport
-      parentRoute: typeof AuthenticatedComercialRoute
+      parentRoute: typeof AuthenticatedRoute
     }
   }
 }
@@ -314,40 +314,28 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
-interface AuthenticatedComercialRouteChildren {
-  AuthenticatedComercialDevisIdRoute: typeof AuthenticatedComercialDevisIdRoute
-}
-
-const AuthenticatedComercialRouteChildren: AuthenticatedComercialRouteChildren =
-  {
-    AuthenticatedComercialDevisIdRoute: AuthenticatedComercialDevisIdRoute,
-  }
-
-const AuthenticatedComercialRouteWithChildren =
-  AuthenticatedComercialRoute._addFileChildren(
-    AuthenticatedComercialRouteChildren,
-  )
-
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedBiRoute: typeof AuthenticatedBiRoute
-  AuthenticatedComercialRoute: typeof AuthenticatedComercialRouteWithChildren
+  AuthenticatedComercialRoute: typeof AuthenticatedComercialRoute
   AuthenticatedConciliacaoRoute: typeof AuthenticatedConciliacaoRoute
   AuthenticatedFinanceiroRoute: typeof AuthenticatedFinanceiroRoute
   AuthenticatedGestaoRoute: typeof AuthenticatedGestaoRoute
   AuthenticatedHubRoute: typeof AuthenticatedHubRoute
   AuthenticatedOperacaoRoute: typeof AuthenticatedOperacaoRoute
+  AuthenticatedComercialDevisIdRoute: typeof AuthenticatedComercialDevisIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedBiRoute: AuthenticatedBiRoute,
-  AuthenticatedComercialRoute: AuthenticatedComercialRouteWithChildren,
+  AuthenticatedComercialRoute: AuthenticatedComercialRoute,
   AuthenticatedConciliacaoRoute: AuthenticatedConciliacaoRoute,
   AuthenticatedFinanceiroRoute: AuthenticatedFinanceiroRoute,
   AuthenticatedGestaoRoute: AuthenticatedGestaoRoute,
   AuthenticatedHubRoute: AuthenticatedHubRoute,
   AuthenticatedOperacaoRoute: AuthenticatedOperacaoRoute,
+  AuthenticatedComercialDevisIdRoute: AuthenticatedComercialDevisIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -363,3 +351,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
