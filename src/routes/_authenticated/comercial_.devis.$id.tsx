@@ -467,6 +467,6 @@ function DevisDetail() {
   );
 }
 
-export const Route = createFileRoute("/_authenticated/comercial/devis/$id")({
+export const Route = createFileRoute("/_authenticated/comercial_/devis/$id")({
   component: DevisDetail,
 });
