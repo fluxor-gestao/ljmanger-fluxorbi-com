@@ -54,7 +54,7 @@ export function AppSidebar() {
 
   const handleNavigate = async (url: string) => {
     if (url === "/admin") await refreshRole();
-    navigate(url);
+    navigate({ to: url as string });
   };
 
   return (
