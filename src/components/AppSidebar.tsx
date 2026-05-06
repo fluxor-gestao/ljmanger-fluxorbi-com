@@ -8,7 +8,7 @@ import {
   Shield,
   LogOut,
 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/AuthContext";
 import logoBanner from "@/assets/logo-banner.png";
 import {
@@ -54,7 +54,7 @@ export function AppSidebar() {
 
   const handleNavigate = async (url: string) => {
     if (url === "/admin") await refreshRole();
-    navigate(url);
+    navigate({ to: url as string });
   };
 
   return (

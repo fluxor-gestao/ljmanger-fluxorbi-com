@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -118,7 +118,7 @@ function DevisCard({
 
   const card = (
     <Card
-      onClick={() => !dragging && navigate(`/comercial/devis/${devis.id}`)}
+      onClick={() => !dragging && navigate({ to: `/comercial/devis/${devis.id}` as string })}
       className={cn(
         "p-3 cursor-pointer hover:shadow-md transition-shadow space-y-2 bg-card",
         dragging && "opacity-50",
