@@ -1,53 +1,77 @@
-## Objetivo
+# Plano — Fase 1B: Adaptação de Rotas, Providers e Páginas Core
 
-Replicar o projeto `julinTec/hub-manager-lundgaard` neste projeto Lovable, mantendo layout, componentes, rotas, lógica e estrutura de banco idênticos ao original.
+Continuar a replicação do `hub-manager-lundgaard`, agora focando em fazer o app rodar de fato no TanStack Start.
 
-## Etapas
+## 1. Dependências
+Instalar via `bun add`:
+- `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` (Kanban de devis)
+- `jspdf`, `html2canvas` (export PDF)
+- `xlsx` (import/export planilhas)
+- `next-themes` (dark mode)
+- `date-fns`, `recharts` (se ainda faltarem)
 
-### 1. Baixar e inspecionar o repositório
-- Clonar o repo público via `git clone` em `/tmp`.
-- Mapear a estrutura: framework usado (Vite + React Router clássico, ou já TanStack Start), dependências do `package.json`, pastas `src/`, `supabase/`, `public/`.
-- Listar todas as páginas, componentes, hooks, libs e assets.
+## 2. Adaptação de Imports
+Substituir em todos os componentes copiados:
+- `react-router-dom` → `@tanstack/react-router`
+- `<Outlet />`, `useNavigate`, `Link`, `NavLink` adaptados à API do TanStack
+- `AppLayout.tsx` e `NavLink.tsx` reescritos para TanStack
+- `AuthContext` mantido como provider React puro (sem mudanças)
 
-### 2. Sincronizar dependências
-- Comparar `package.json` do original com o atual e instalar pacotes faltantes via `bun add`.
-- Manter as versões já presentes no template Lovable (TanStack Start, Tailwind v4, shadcn) quando houver conflito.
+## 3. Estilos (src/styles.css)
+Importar do projeto original:
+- Tokens de cor HSL convertidos para o padrão atual (`@theme` Tailwind v4)
+- Fontes, radius, sombras, gradientes da marca Lundgaard
+- Classes utilitárias customizadas (kanban, devis-pdf-page, etc.)
 
-### 3. Copiar o código-fonte
-- Copiar `src/components/`, `src/hooks/`, `src/lib/`, `src/integrations/`, `src/contexts/` e quaisquer pastas equivalentes.
-- Copiar assets de `public/` e `src/assets/`.
-- Copiar estilos globais (mesclando com `src/styles.css` atual para preservar tokens do design system, se o original usar os mesmos).
+## 4. Estrutura de Rotas (`src/routes/`)
+Converter as 12 páginas originais em rotas file-based:
 
-### 4. Adaptar o roteamento
-- O template atual usa **TanStack Start** (file-based routing em `src/routes/`).
-- Se o original usa `react-router-dom` com `<Routes>` em `App.tsx`, converter cada rota em um arquivo em `src/routes/` (ex.: `/dashboard` → `src/routes/dashboard.tsx`), mantendo o componente da página intacto.
-- Trocar imports de `react-router-dom` por `@tanstack/react-router` (`Link`, `useNavigate`, `useParams`).
-- Atualizar `src/routes/__root.tsx` com providers globais (Theme, Auth, Toaster, etc.) que estiverem no `App.tsx` original.
+```
+src/routes/
+  __root.tsx              (providers: QueryClient, Auth, Toaster, Tooltip)
+  index.tsx               (redirect → /hub se logado, → /auth se não)
+  auth.tsx                (Login + Signup)
+  _authenticated.tsx      (guard: exige sessão Supabase)
+  _authenticated/
+    hub.tsx               (Dashboard principal)
+    devis.tsx             (Lista + Kanban de propostas)
+    devis.$id.tsx         (Detalhe da proposta)
+    clientes.tsx
+    financeiro.tsx
+    operacao.tsx
+    configuracoes.tsx
+    api-keys.tsx
+```
 
-### 5. Recriar o banco de dados (se aplicável)
-- Se o repo tem `supabase/migrations/`, aplicar as migrations no Lovable Cloud deste projeto para recriar tabelas, RLS policies, functions e triggers idênticas.
-- Recriar edge functions, se houver, em `supabase/functions/` → adaptar para server functions do TanStack Start ou manter como rotas em `src/routes/api/`.
-- **Dados (registros) não são migrados automaticamente** — você precisará exportar CSVs do projeto original e reimportar.
+Nesta fase implementamos: `__root`, `index`, `auth`, `_authenticated` guard e `hub` (placeholder funcional). As demais páginas ficam como stubs navegáveis.
 
-### 6. Configurar secrets
-- Listar quaisquer variáveis de ambiente referenciadas no código original.
-- Pedir as chaves necessárias (Stripe, APIs externas) para configurar como secrets do Lovable Cloud.
+## 5. Auth Flow
+- Página `/auth` com tabs Login/Cadastro (email + senha + Google OAuth)
+- `_authenticated.tsx` com `beforeLoad` checando `supabase.auth.getUser()`
+- Redirect para `/auth` quando não autenticado, com `redirect` search param
+- Após login → redireciona para `/hub`
 
-### 7. Validação visual
-- Rodar a preview, navegar por cada página e comparar com o repo original.
-- Corrigir imports quebrados, rotas faltantes e ajustes de SSR (componentes que usam `window` precisam ser client-only no TanStack Start).
+## 6. Root Layout
+`__root.tsx` envolverá:
+- `QueryClientProvider`
+- `AuthProvider` (do AuthContext já copiado)
+- `TooltipProvider`
+- `<Toaster />` (shadcn) + `<Sonner />`
+- `<Outlet />`
 
-## Detalhes técnicos
+## 7. Hub (página inicial pós-login)
+Cards de resumo + atalhos para os módulos. Layout idêntico ao original (sidebar + header + grid de KPIs), com dados reais das tabelas `devis`, `financial_entries`, `clients` quando disponíveis.
 
-- **Conversão de roteamento** é o ponto mais sensível. Projetos Lovable mais antigos usam `react-router-dom` v6 com `BrowserRouter` em `main.tsx` e `<Routes>` em `App.tsx`. O template atual já é TanStack Start, então cada `<Route path="/x" element={<X />} />` vira um arquivo `src/routes/x.tsx` exportando `createFileRoute("/x")({ component: X })`.
-- Componentes shadcn/ui já existem aqui — não vamos sobrescrever os do template a menos que haja diferenças importantes.
-- A geração de `routeTree.gen.ts` é automática.
+## 8. O que NÃO entra nesta fase
+- Páginas detalhadas de Devis/Financeiro/Operação (stubs apenas)
+- Edge Functions (próxima fase, quando você tiver as API keys)
+- Tela de envio de proposta com geração de PDF integrada
 
-## O que NÃO será replicado automaticamente
-- Registros do banco de dados original.
-- Usuários cadastrados na auth original.
-- Secrets/API keys.
-- Histórico de versões do projeto Lovable original.
+## Próximas fases (depois desta)
+- **Fase 2**: páginas Devis (lista + kanban + detalhe + validação)
+- **Fase 3**: Financeiro + Clientes + Operação
+- **Fase 4**: Edge Functions (IA, PDF parsing, envio de email) — exige API keys
 
-## Próximo passo
-Aprove o plano e eu inicio o clone + análise detalhada do repositório, te reportando o que encontrei antes de fazer alterações destrutivas.
+---
+
+**Aprovar para eu executar a Fase 1B?**
