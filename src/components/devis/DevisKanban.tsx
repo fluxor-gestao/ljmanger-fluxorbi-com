@@ -118,7 +118,7 @@ function DevisCard({
 
   const card = (
     <Card
-      onClick={() => !dragging && navigate({ to: `/comercial/devis/${devis.id}` as string })}
+      onClick={() => !dragging && navigate({ to: "/comercial/devis/$id", params: { id: devis.id } })}
       className={cn(
         "p-3 cursor-pointer hover:shadow-md transition-shadow space-y-2 bg-card",
         dragging && "opacity-50",
