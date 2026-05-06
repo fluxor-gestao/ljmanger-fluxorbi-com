@@ -153,7 +153,7 @@ function DevisDetail() {
 
   const handleExportPdf = async () => {
     if (!devis) return;
-    const client = clientsById[devis.client_id];
+    const client = clientsById[devis.client_id ?? ""];
     const host = document.createElement("div");
     host.style.position = "fixed";
     host.style.left = "-10000px";
@@ -181,8 +181,8 @@ function DevisDetail() {
   if (isLoading || !form) return <div className="text-muted-foreground">Carregando...</div>;
   if (!devis) return <div className="text-muted-foreground">Devis não encontrado.</div>;
 
-  const client = clientsById[devis.client_id];
-  const responsavel = profilesById[devis.commercial_responsible];
+  const client = clientsById[devis.client_id ?? ""];
+  const responsavel = profilesById[devis.commercial_responsible ?? ""];
 
   return (
     <div className="space-y-6">
