@@ -1,77 +1,28 @@
-# Plano — Fase 1B: Adaptação de Rotas, Providers e Páginas Core
+# Fase 1B (continuação) — Rotas, Estilos e Páginas Core
 
-Continuar a replicação do `hub-manager-lundgaard`, agora focando em fazer o app rodar de fato no TanStack Start.
+## Arquivos a criar/atualizar
 
-## 1. Dependências
-Instalar via `bun add`:
-- `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` (Kanban de devis)
-- `jspdf`, `html2canvas` (export PDF)
-- `xlsx` (import/export planilhas)
-- `next-themes` (dark mode)
-- `date-fns`, `recharts` (se ainda faltarem)
+### 1. `src/styles.css` (substituir)
+Migrar tokens HSL do projeto original (paleta azul Lundgaard, sidebar dark, success/warning), fontes Inter + Space Grotesk, mantendo o formato `@theme inline` do Tailwind v4.
 
-## 2. Adaptação de Imports
-Substituir em todos os componentes copiados:
-- `react-router-dom` → `@tanstack/react-router`
-- `<Outlet />`, `useNavigate`, `Link`, `NavLink` adaptados à API do TanStack
-- `AppLayout.tsx` e `NavLink.tsx` reescritos para TanStack
-- `AuthContext` mantido como provider React puro (sem mudanças)
+### 2. `src/routes/__root.tsx` (substituir)
+Wrap com providers: `QueryClientProvider` + `AuthProvider` + `TooltipProvider` + `<Toaster />` + `<Sonner />` + `<Outlet />`. Lang `pt-BR`, title "Lundgaard Hub".
 
-## 3. Estilos (src/styles.css)
-Importar do projeto original:
-- Tokens de cor HSL convertidos para o padrão atual (`@theme` Tailwind v4)
-- Fontes, radius, sombras, gradientes da marca Lundgaard
-- Classes utilitárias customizadas (kanban, devis-pdf-page, etc.)
+### 3. `src/routes/index.tsx` (substituir)
+Redirect imediato `/` → `/auth` via `beforeLoad`.
 
-## 4. Estrutura de Rotas (`src/routes/`)
-Converter as 12 páginas originais em rotas file-based:
+### 4. `src/routes/auth.tsx` (criar)
+Tela de login + cadastro com Tabs (shadcn). Usa `supabase.auth.signInWithPassword` e `supabase.auth.signUp`. Redireciona para `/hub` quando o user já está logado.
 
-```
-src/routes/
-  __root.tsx              (providers: QueryClient, Auth, Toaster, Tooltip)
-  index.tsx               (redirect → /hub se logado, → /auth se não)
-  auth.tsx                (Login + Signup)
-  _authenticated.tsx      (guard: exige sessão Supabase)
-  _authenticated/
-    hub.tsx               (Dashboard principal)
-    devis.tsx             (Lista + Kanban de propostas)
-    devis.$id.tsx         (Detalhe da proposta)
-    clientes.tsx
-    financeiro.tsx
-    operacao.tsx
-    configuracoes.tsx
-    api-keys.tsx
-```
+### 5. `src/routes/_authenticated.tsx` (criar)
+Layout-route protegido. Checa `useAuth()`, redireciona para `/auth` se não autenticado, renderiza `<AppLayout />` (que já tem `<Outlet />` para os filhos).
 
-Nesta fase implementamos: `__root`, `index`, `auth`, `_authenticated` guard e `hub` (placeholder funcional). As demais páginas ficam como stubs navegáveis.
+### 6. `src/routes/_authenticated/hub.tsx` (criar)
+Página Hub idêntica ao original: 5 cards de módulos (Comercial, Financeiro, Operação, Gestão, BI) com gradientes, navegando para suas rotas via `useNavigate`.
 
-## 5. Auth Flow
-- Página `/auth` com tabs Login/Cadastro (email + senha + Google OAuth)
-- `_authenticated.tsx` com `beforeLoad` checando `supabase.auth.getUser()`
-- Redirect para `/auth` quando não autenticado, com `redirect` search param
-- Após login → redireciona para `/hub`
+## Próximas fases (não nesta)
+- Fase 2: criar stubs `/comercial`, `/financeiro`, `/operacao`, `/gestao`, `/bi`, `/admin` para os links da sidebar não quebrarem, depois portar conteúdo real.
+- Fase 3: rotas de detalhe (`devis/$id`), aceitar proposta pública, admin/api-keys.
+- Fase 4: Edge Functions (quando você tiver as API keys).
 
-## 6. Root Layout
-`__root.tsx` envolverá:
-- `QueryClientProvider`
-- `AuthProvider` (do AuthContext já copiado)
-- `TooltipProvider`
-- `<Toaster />` (shadcn) + `<Sonner />`
-- `<Outlet />`
-
-## 7. Hub (página inicial pós-login)
-Cards de resumo + atalhos para os módulos. Layout idêntico ao original (sidebar + header + grid de KPIs), com dados reais das tabelas `devis`, `financial_entries`, `clients` quando disponíveis.
-
-## 8. O que NÃO entra nesta fase
-- Páginas detalhadas de Devis/Financeiro/Operação (stubs apenas)
-- Edge Functions (próxima fase, quando você tiver as API keys)
-- Tela de envio de proposta com geração de PDF integrada
-
-## Próximas fases (depois desta)
-- **Fase 2**: páginas Devis (lista + kanban + detalhe + validação)
-- **Fase 3**: Financeiro + Clientes + Operação
-- **Fase 4**: Edge Functions (IA, PDF parsing, envio de email) — exige API keys
-
----
-
-**Aprovar para eu executar a Fase 1B?**
+**Aprovar para eu aplicar?**
