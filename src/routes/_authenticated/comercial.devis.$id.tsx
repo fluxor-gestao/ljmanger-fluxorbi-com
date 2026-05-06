@@ -152,6 +152,7 @@ function DevisDetail() {
   };
 
   const handleExportPdf = async () => {
+    if (!devis) return;
     const client = clientsById[devis.client_id];
     const host = document.createElement("div");
     host.style.position = "fixed";
@@ -167,7 +168,7 @@ function DevisDetail() {
         setTimeout(resolve, 600);
       });
       const safeName = (client?.name || "cliente").replace(/[^\w\-]+/g, "_");
-      await exportDevisPdfFromContainer(host, `Devis-${(devis?.devis_number ?? "") || devis.id.slice(0, 8)}-${safeName}.pdf`);
+      await exportDevisPdfFromContainer(host, `Devis-${(devis?.devis_number ?? "") || (devis?.id ?? "").slice(0, 8)}-${safeName}.pdf`);
       toast.success("PDF gerado!");
     } catch (e: any) {
       toast.error(e.message || "Erro ao gerar PDF");
