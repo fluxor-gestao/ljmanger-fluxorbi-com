@@ -90,7 +90,7 @@ function DevisDetail() {
   const update = useMutation({
     mutationFn: async () => {
       // Bloqueio: status que exige validação não pode ser salvo se ainda não validado
-      if (requiresValidation(form.status) && !devis.validated_at) {
+      if (requiresValidation(form.status) && !devis?.validated_at) {
         throw new Error("Valide a proposta antes de mover para este status.");
       }
       const payload = {
@@ -167,7 +167,7 @@ function DevisDetail() {
         setTimeout(resolve, 600);
       });
       const safeName = (client?.name || "cliente").replace(/[^\w\-]+/g, "_");
-      await exportDevisPdfFromContainer(host, `Devis-${devis.devis_number || devis.id.slice(0, 8)}-${safeName}.pdf`);
+      await exportDevisPdfFromContainer(host, `Devis-${(devis?.devis_number ?? "") || devis.id.slice(0, 8)}-${safeName}.pdf`);
       toast.success("PDF gerado!");
     } catch (e: any) {
       toast.error(e.message || "Erro ao gerar PDF");
@@ -191,9 +191,9 @@ function DevisDetail() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold font-display">{devis.title}</h1>
+            <h1 className="text-3xl font-bold font-display">{(devis?.title ?? "")}</h1>
             <p className="text-muted-foreground mt-1">
-              Detalhes do devis {devis.devis_number && <span className="ml-2 font-mono text-xs px-2 py-0.5 rounded bg-muted">{devis.devis_number}</span>}
+              Detalhes do devis {(devis?.devis_number ?? "") && <span className="ml-2 font-mono text-xs px-2 py-0.5 rounded bg-muted">{(devis?.devis_number ?? "")}</span>}
             </p>
           </div>
         </div>
@@ -224,7 +224,7 @@ function DevisDetail() {
               <Button variant="outline" onClick={handleExportPdf}>
                 <FileDown className="h-4 w-4 mr-2" /> Exportar PDF
               </Button>
-              {devis.status === "pronta_para_envio" && (
+              {(devis?.status ?? "") === "pronta_para_envio" && (
                 <Button onClick={() => setSendOpen(true)} className="bg-green-600 hover:bg-green-700">
                   <Send className="h-4 w-4 mr-2" /> Enviar ao cliente
                 </Button>
@@ -294,8 +294,8 @@ function DevisDetail() {
           <div>
             <Label>Status</Label>
             <div className="mt-1 flex items-center gap-2">
-              <Badge variant="outline" className={devisStatusColors[devis.status] || ""}>
-                {statusLabels[devis.status] || devis.status}
+              <Badge variant="outline" className={devisStatusColors[(devis?.status ?? "")] || ""}>
+                {statusLabels[(devis?.status ?? "")] || (devis?.status ?? "")}
               </Badge>
               <span className="text-[10px] text-muted-foreground">
                 Atualizado pelo Kanban Comercial
@@ -383,7 +383,7 @@ function DevisDetail() {
             <Label>Título</Label>
             {editing ? (
               <Input value={form.title ?? ""} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            ) : <p className="font-medium mt-1">{devis.title}</p>}
+            ) : <p className="font-medium mt-1">{(devis?.title ?? "")}</p>}
           </div>
 
           {/* Relatório da reunião */}
