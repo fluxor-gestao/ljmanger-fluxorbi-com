@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          scopes: string[]
+          usage_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          scopes?: string[]
+          usage_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          scopes?: string[]
+          usage_count?: number
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -298,6 +337,7 @@ export type Database = {
           created_by: string | null
           deadline_date: string | null
           description: string | null
+          devis_number: string | null
           down_payment_amount: number
           final_charge_generated: boolean | null
           id: string
@@ -308,6 +348,8 @@ export type Database = {
           notes: string | null
           proposal_structure: string | null
           reference_number: string | null
+          rejected_at: string | null
+          rejected_ip: string | null
           responsible_sector: string | null
           scope_description: string | null
           sent_at: string | null
@@ -336,6 +378,7 @@ export type Database = {
           created_by?: string | null
           deadline_date?: string | null
           description?: string | null
+          devis_number?: string | null
           down_payment_amount?: number
           final_charge_generated?: boolean | null
           id?: string
@@ -346,6 +389,8 @@ export type Database = {
           notes?: string | null
           proposal_structure?: string | null
           reference_number?: string | null
+          rejected_at?: string | null
+          rejected_ip?: string | null
           responsible_sector?: string | null
           scope_description?: string | null
           sent_at?: string | null
@@ -374,6 +419,7 @@ export type Database = {
           created_by?: string | null
           deadline_date?: string | null
           description?: string | null
+          devis_number?: string | null
           down_payment_amount?: number
           final_charge_generated?: boolean | null
           id?: string
@@ -384,6 +430,8 @@ export type Database = {
           notes?: string | null
           proposal_structure?: string | null
           reference_number?: string | null
+          rejected_at?: string | null
+          rejected_ip?: string | null
           responsible_sector?: string | null
           scope_description?: string | null
           sent_at?: string | null
@@ -638,6 +686,33 @@ export type Database = {
           },
         ]
       }
+      system_settings: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          settings: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          settings?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          settings?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -661,12 +736,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_advance_sent_devis: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      validate_api_key: {
+        Args: { _key_hash: string }
+        Returns: {
+          id: string
+          name: string
+          scopes: string[]
+        }[]
       }
     }
     Enums: {
