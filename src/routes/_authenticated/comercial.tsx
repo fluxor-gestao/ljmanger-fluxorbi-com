@@ -602,7 +602,7 @@ function Comercial() {
                   {filteredDevis.length === 0 ? (
                     <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum devis encontrado</TableCell></TableRow>
                   ) : filteredDevis.map((d: any) => (
-                    <TableRow key={d.id} className="cursor-pointer" onClick={() => navigate({ to: `/comercial/devis/${d.id}` })}>
+                    <TableRow key={d.id} className="cursor-pointer" onClick={() => navigate({ to: "/comercial/devis/$id", params: { id: d.id } })}>
                       <TableCell className="font-medium">{clientsById[d.client_id]?.name || "—"}</TableCell>
                       <TableCell><Badge variant="outline" className={devisStatusColors[d.status] || ""}>{statusLabels[d.status] || d.status}</Badge></TableCell>
                       <TableCell className="text-right">{fmtBRL(d.total_amount)}</TableCell>
@@ -610,7 +610,7 @@ function Comercial() {
                       <TableCell>{d.meeting_date ? format(parseISO(d.meeting_date), "dd/MM/yyyy") : "—"}</TableCell>
                       <TableCell>{profilesById[d.commercial_responsible]?.full_name || profilesById[d.commercial_responsible]?.email || "—"}</TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Button size="icon" variant="ghost" onClick={() => navigate({ to: `/comercial/devis/${d.id}` })}>
+                        <Button size="icon" variant="ghost" onClick={() => navigate({ to: "/comercial/devis/$id", params: { id: d.id } })}>
                           <Eye className="h-4 w-4" />
                         </Button>
                       </TableCell>
