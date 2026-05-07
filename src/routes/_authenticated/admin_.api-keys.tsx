@@ -286,9 +286,12 @@ function ApiKeys() {
                   </TableBody>
                 </Table>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Endpoints de dados brutos aceitam: <code>&from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&page_size=500</code> (máx 1000).
-                  Para baixar <strong>tudo de uma vez</strong> (sem paginar), adicione <code>&all=true</code> — limite de segurança: 200.000 linhas por request.
-                  Endpoints de KPIs já retornam <strong>sempre completos</strong> (lemos todas as páginas internamente).
+                  <strong>Dados brutos:</strong> aceitam <code>&from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&page_size=500</code> (máx 1000 por página).
+                  Para baixar tudo de uma janela, adicione <code>&all=true</code> — neste modo <strong><code>from</code> e <code>to</code> são obrigatórios</strong> e a janela máxima é de 366 dias.
+                  Limite duro de 200.000 linhas por request: se a resposta vier com <code>meta.truncated: true</code>, refaça com janela menor.
+                  <br />
+                  <strong>KPIs:</strong> agregados direto no banco — sempre exatos, sem paginação. <code>from</code>/<code>to</code> opcionais.
+                  <br />
                   Substitua <code>SEU_TOKEN</code> pela chave gerada na aba "Chaves".
                 </p>
               </div>
@@ -299,8 +302,11 @@ function ApiKeys() {
 {`# Paginado (500 por página):
 curl "${FN_BASE}/bi-financeiro?token=lk_xxxxx&from=2026-01-01&to=2026-12-31&page=1&page_size=500"
 
-# Tudo de uma vez:
-curl "${FN_BASE}/bi-financeiro?token=lk_xxxxx&from=2026-01-01&to=2026-12-31&all=true"`}
+# Tudo de uma janela (from/to obrigatórios, máx 366 dias):
+curl "${FN_BASE}/bi-financeiro?token=lk_xxxxx&from=2026-01-01&to=2026-12-31&all=true"
+
+# KPI agregado (rápido, sem paginação):
+curl "${FN_BASE}/bi-kpis-financeiro?token=lk_xxxxx&from=2026-01-01&to=2026-12-31"`}
                 </pre>
               </div>
 
