@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { CORS_HEADERS, jsonResponse, validateBiRequest } from "@/lib/bi-auth.server";
+import { CORS_HEADERS, fetchAll, jsonResponse, validateBiRequest } from "@/lib/bi-auth.server";
 
 export const Route = createFileRoute("/api/public/bi-operacao")({
   server: {
@@ -10,19 +10,25 @@ export const Route = createFileRoute("/api/public/bi-operacao")({
         const auth = await validateBiRequest(request, "operacao");
         if (!auth.ok) return auth.response;
 
-        let q = supabaseAdmin
-          .from("services")
-          .select("*", { count: "exact" })
-          .order("created_at", { ascending: false });
-        if (auth.from) q = q.gte("created_at", auth.from);
-        if (auth.to) q = q.lte("created_at", auth.to);
+        const base = () => {
+          let q = supabaseAdmin
+            .from("services")
+            .select("*", { count: "exact" })
+            .order("created_at", { ascending: false });
+          if (auth.from) q = q.gte("created_at", auth.from);
+          if (auth.to) q = q.lte("created_at", auth.to);
+          return q;
+        };
+
+        if (auth.all) {
+          const { data, total, error } = await fetchAll((from, to) => base().range(from, to));
+          if (error) return jsonResponse({ error: error.message }, 500);
+          return jsonResponse({ data, meta: { total, all: true } });
+        }
 
         const offset = (auth.page - 1) * auth.pageSize;
-        q = q.range(offset, offset + auth.pageSize - 1);
-
-        const { data, error, count } = await q;
+        const { data, error, count } = await base().range(offset, offset + auth.pageSize - 1);
         if (error) return jsonResponse({ error: error.message }, 500);
-
         return jsonResponse({
           data,
           meta: { page: auth.page, page_size: auth.pageSize, total: count ?? 0 },
