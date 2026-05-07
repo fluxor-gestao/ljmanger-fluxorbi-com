@@ -287,14 +287,20 @@ function ApiKeys() {
                 </Table>
                 <p className="text-xs text-muted-foreground mt-2">
                   Endpoints de dados brutos aceitam: <code>&from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&page_size=500</code> (máx 1000).
+                  Para baixar <strong>tudo de uma vez</strong> (sem paginar), adicione <code>&all=true</code> — limite de segurança: 200.000 linhas por request.
+                  Endpoints de KPIs já retornam <strong>sempre completos</strong> (lemos todas as páginas internamente).
                   Substitua <code>SEU_TOKEN</code> pela chave gerada na aba "Chaves".
                 </p>
               </div>
 
               <div>
-                <Label className="text-xs text-muted-foreground">Exemplo (curl)</Label>
+                <Label className="text-xs text-muted-foreground">Exemplos (curl)</Label>
                 <pre className="bg-muted p-3 rounded text-xs overflow-x-auto mt-1">
-{`curl "${FN_BASE}/bi-financeiro?token=lk_xxxxx&from=2026-01-01&to=2026-12-31&page=1&page_size=500"`}
+{`# Paginado (500 por página):
+curl "${FN_BASE}/bi-financeiro?token=lk_xxxxx&from=2026-01-01&to=2026-12-31&page=1&page_size=500"
+
+# Tudo de uma vez:
+curl "${FN_BASE}/bi-financeiro?token=lk_xxxxx&from=2026-01-01&to=2026-12-31&all=true"`}
                 </pre>
               </div>
 
