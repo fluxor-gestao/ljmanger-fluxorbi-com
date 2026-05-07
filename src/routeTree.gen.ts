@@ -27,7 +27,7 @@ import { Route as ApiPublicBiKpisFinanceiroRouteImport } from './routes/api/publ
 import { Route as ApiPublicBiKpisComercialRouteImport } from './routes/api/public/bi-kpis-comercial'
 import { Route as ApiPublicBiFinanceiroRouteImport } from './routes/api/public/bi-financeiro'
 import { Route as ApiPublicBiComercialRouteImport } from './routes/api/public/bi-comercial'
-import { Route as AuthenticatedAdminApiKeysRouteImport } from './routes/_authenticated/admin.api-keys'
+import { Route as AuthenticatedAdminApiKeysRouteImport } from './routes/_authenticated/admin_.api-keys'
 import { Route as AuthenticatedComercialDevisIdRouteImport } from './routes/_authenticated/comercial_.devis.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -124,9 +124,9 @@ const ApiPublicBiComercialRoute = ApiPublicBiComercialRouteImport.update({
 } as any)
 const AuthenticatedAdminApiKeysRoute =
   AuthenticatedAdminApiKeysRouteImport.update({
-    id: '/api-keys',
-    path: '/api-keys',
-    getParentRoute: () => AuthenticatedAdminRoute,
+    id: '/admin_/api-keys',
+    path: '/admin/api-keys',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedComercialDevisIdRoute =
   AuthenticatedComercialDevisIdRouteImport.update({
@@ -138,7 +138,7 @@ const AuthenticatedComercialDevisIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/admin': typeof AuthenticatedAdminRoute
   '/bi': typeof AuthenticatedBiRoute
   '/comercial': typeof AuthenticatedComercialRoute
   '/conciliacao': typeof AuthenticatedConciliacaoRoute
@@ -159,7 +159,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/admin': typeof AuthenticatedAdminRoute
   '/bi': typeof AuthenticatedBiRoute
   '/comercial': typeof AuthenticatedComercialRoute
   '/conciliacao': typeof AuthenticatedConciliacaoRoute
@@ -182,7 +182,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/bi': typeof AuthenticatedBiRoute
   '/_authenticated/comercial': typeof AuthenticatedComercialRoute
   '/_authenticated/conciliacao': typeof AuthenticatedConciliacaoRoute
@@ -190,7 +190,7 @@ export interface FileRoutesById {
   '/_authenticated/gestao': typeof AuthenticatedGestaoRoute
   '/_authenticated/hub': typeof AuthenticatedHubRoute
   '/_authenticated/operacao': typeof AuthenticatedOperacaoRoute
-  '/_authenticated/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/_authenticated/admin_/api-keys': typeof AuthenticatedAdminApiKeysRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
   '/api/public/bi-kpis-comercial': typeof ApiPublicBiKpisComercialRoute
@@ -256,7 +256,7 @@ export interface FileRouteTypes {
     | '/_authenticated/gestao'
     | '/_authenticated/hub'
     | '/_authenticated/operacao'
-    | '/_authenticated/admin/api-keys'
+    | '/_authenticated/admin_/api-keys'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
     | '/api/public/bi-kpis-comercial'
@@ -408,12 +408,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBiComercialRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/admin/api-keys': {
-      id: '/_authenticated/admin/api-keys'
-      path: '/api-keys'
+    '/_authenticated/admin_/api-keys': {
+      id: '/_authenticated/admin_/api-keys'
+      path: '/admin/api-keys'
       fullPath: '/admin/api-keys'
       preLoaderRoute: typeof AuthenticatedAdminApiKeysRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/comercial_/devis/$id': {
       id: '/_authenticated/comercial_/devis/$id'
@@ -425,19 +425,8 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedAdminRouteChildren {
-  AuthenticatedAdminApiKeysRoute: typeof AuthenticatedAdminApiKeysRoute
-}
-
-const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
-  AuthenticatedAdminApiKeysRoute: AuthenticatedAdminApiKeysRoute,
-}
-
-const AuthenticatedAdminRouteWithChildren =
-  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
-
 interface AuthenticatedRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedBiRoute: typeof AuthenticatedBiRoute
   AuthenticatedComercialRoute: typeof AuthenticatedComercialRoute
   AuthenticatedConciliacaoRoute: typeof AuthenticatedConciliacaoRoute
@@ -445,11 +434,12 @@ interface AuthenticatedRouteChildren {
   AuthenticatedGestaoRoute: typeof AuthenticatedGestaoRoute
   AuthenticatedHubRoute: typeof AuthenticatedHubRoute
   AuthenticatedOperacaoRoute: typeof AuthenticatedOperacaoRoute
+  AuthenticatedAdminApiKeysRoute: typeof AuthenticatedAdminApiKeysRoute
   AuthenticatedComercialDevisIdRoute: typeof AuthenticatedComercialDevisIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedBiRoute: AuthenticatedBiRoute,
   AuthenticatedComercialRoute: AuthenticatedComercialRoute,
   AuthenticatedConciliacaoRoute: AuthenticatedConciliacaoRoute,
@@ -457,6 +447,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedGestaoRoute: AuthenticatedGestaoRoute,
   AuthenticatedHubRoute: AuthenticatedHubRoute,
   AuthenticatedOperacaoRoute: AuthenticatedOperacaoRoute,
+  AuthenticatedAdminApiKeysRoute: AuthenticatedAdminApiKeysRoute,
   AuthenticatedComercialDevisIdRoute: AuthenticatedComercialDevisIdRoute,
 }
 

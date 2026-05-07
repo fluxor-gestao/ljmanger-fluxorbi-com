@@ -393,6 +393,6 @@ function ApiKeys() {
   );
 }
 
-export const Route = createFileRoute("/_authenticated/admin/api-keys")({
+export const Route = createFileRoute("/_authenticated/admin_/api-keys")({
   component: ApiKeys,
 });
