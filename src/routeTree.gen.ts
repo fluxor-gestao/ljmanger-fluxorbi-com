@@ -21,6 +21,12 @@ import { Route as AuthenticatedComercialRouteImport } from './routes/_authentica
 import { Route as AuthenticatedBiRouteImport } from './routes/_authenticated/bi'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as PropostaAceiteTokenRouteImport } from './routes/proposta.aceite.$token'
+import { Route as ApiPublicBiOperacaoRouteImport } from './routes/api/public/bi-operacao'
+import { Route as ApiPublicBiKpisOperacaoRouteImport } from './routes/api/public/bi-kpis-operacao'
+import { Route as ApiPublicBiKpisFinanceiroRouteImport } from './routes/api/public/bi-kpis-financeiro'
+import { Route as ApiPublicBiKpisComercialRouteImport } from './routes/api/public/bi-kpis-comercial'
+import { Route as ApiPublicBiFinanceiroRouteImport } from './routes/api/public/bi-financeiro'
+import { Route as ApiPublicBiComercialRouteImport } from './routes/api/public/bi-comercial'
 import { Route as AuthenticatedAdminApiKeysRouteImport } from './routes/_authenticated/admin.api-keys'
 import { Route as AuthenticatedComercialDevisIdRouteImport } from './routes/_authenticated/comercial_.devis.$id'
 
@@ -84,6 +90,38 @@ const PropostaAceiteTokenRoute = PropostaAceiteTokenRouteImport.update({
   path: '/proposta/aceite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBiOperacaoRoute = ApiPublicBiOperacaoRouteImport.update({
+  id: '/api/public/bi-operacao',
+  path: '/api/public/bi-operacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBiKpisOperacaoRoute = ApiPublicBiKpisOperacaoRouteImport.update({
+  id: '/api/public/bi-kpis-operacao',
+  path: '/api/public/bi-kpis-operacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBiKpisFinanceiroRoute =
+  ApiPublicBiKpisFinanceiroRouteImport.update({
+    id: '/api/public/bi-kpis-financeiro',
+    path: '/api/public/bi-kpis-financeiro',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicBiKpisComercialRoute =
+  ApiPublicBiKpisComercialRouteImport.update({
+    id: '/api/public/bi-kpis-comercial',
+    path: '/api/public/bi-kpis-comercial',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicBiFinanceiroRoute = ApiPublicBiFinanceiroRouteImport.update({
+  id: '/api/public/bi-financeiro',
+  path: '/api/public/bi-financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBiComercialRoute = ApiPublicBiComercialRouteImport.update({
+  id: '/api/public/bi-comercial',
+  path: '/api/public/bi-comercial',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminApiKeysRoute =
   AuthenticatedAdminApiKeysRouteImport.update({
     id: '/api-keys',
@@ -109,6 +147,12 @@ export interface FileRoutesByFullPath {
   '/hub': typeof AuthenticatedHubRoute
   '/operacao': typeof AuthenticatedOperacaoRoute
   '/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
+  '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
+  '/api/public/bi-kpis-comercial': typeof ApiPublicBiKpisComercialRoute
+  '/api/public/bi-kpis-financeiro': typeof ApiPublicBiKpisFinanceiroRoute
+  '/api/public/bi-kpis-operacao': typeof ApiPublicBiKpisOperacaoRoute
+  '/api/public/bi-operacao': typeof ApiPublicBiOperacaoRoute
   '/proposta/aceite/$token': typeof PropostaAceiteTokenRoute
   '/comercial/devis/$id': typeof AuthenticatedComercialDevisIdRoute
 }
@@ -124,6 +168,12 @@ export interface FileRoutesByTo {
   '/hub': typeof AuthenticatedHubRoute
   '/operacao': typeof AuthenticatedOperacaoRoute
   '/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
+  '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
+  '/api/public/bi-kpis-comercial': typeof ApiPublicBiKpisComercialRoute
+  '/api/public/bi-kpis-financeiro': typeof ApiPublicBiKpisFinanceiroRoute
+  '/api/public/bi-kpis-operacao': typeof ApiPublicBiKpisOperacaoRoute
+  '/api/public/bi-operacao': typeof ApiPublicBiOperacaoRoute
   '/proposta/aceite/$token': typeof PropostaAceiteTokenRoute
   '/comercial/devis/$id': typeof AuthenticatedComercialDevisIdRoute
 }
@@ -141,6 +191,12 @@ export interface FileRoutesById {
   '/_authenticated/hub': typeof AuthenticatedHubRoute
   '/_authenticated/operacao': typeof AuthenticatedOperacaoRoute
   '/_authenticated/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
+  '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
+  '/api/public/bi-kpis-comercial': typeof ApiPublicBiKpisComercialRoute
+  '/api/public/bi-kpis-financeiro': typeof ApiPublicBiKpisFinanceiroRoute
+  '/api/public/bi-kpis-operacao': typeof ApiPublicBiKpisOperacaoRoute
+  '/api/public/bi-operacao': typeof ApiPublicBiOperacaoRoute
   '/proposta/aceite/$token': typeof PropostaAceiteTokenRoute
   '/_authenticated/comercial_/devis/$id': typeof AuthenticatedComercialDevisIdRoute
 }
@@ -158,6 +214,12 @@ export interface FileRouteTypes {
     | '/hub'
     | '/operacao'
     | '/admin/api-keys'
+    | '/api/public/bi-comercial'
+    | '/api/public/bi-financeiro'
+    | '/api/public/bi-kpis-comercial'
+    | '/api/public/bi-kpis-financeiro'
+    | '/api/public/bi-kpis-operacao'
+    | '/api/public/bi-operacao'
     | '/proposta/aceite/$token'
     | '/comercial/devis/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -173,6 +235,12 @@ export interface FileRouteTypes {
     | '/hub'
     | '/operacao'
     | '/admin/api-keys'
+    | '/api/public/bi-comercial'
+    | '/api/public/bi-financeiro'
+    | '/api/public/bi-kpis-comercial'
+    | '/api/public/bi-kpis-financeiro'
+    | '/api/public/bi-kpis-operacao'
+    | '/api/public/bi-operacao'
     | '/proposta/aceite/$token'
     | '/comercial/devis/$id'
   id:
@@ -189,6 +257,12 @@ export interface FileRouteTypes {
     | '/_authenticated/hub'
     | '/_authenticated/operacao'
     | '/_authenticated/admin/api-keys'
+    | '/api/public/bi-comercial'
+    | '/api/public/bi-financeiro'
+    | '/api/public/bi-kpis-comercial'
+    | '/api/public/bi-kpis-financeiro'
+    | '/api/public/bi-kpis-operacao'
+    | '/api/public/bi-operacao'
     | '/proposta/aceite/$token'
     | '/_authenticated/comercial_/devis/$id'
   fileRoutesById: FileRoutesById
@@ -197,6 +271,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicBiComercialRoute: typeof ApiPublicBiComercialRoute
+  ApiPublicBiFinanceiroRoute: typeof ApiPublicBiFinanceiroRoute
+  ApiPublicBiKpisComercialRoute: typeof ApiPublicBiKpisComercialRoute
+  ApiPublicBiKpisFinanceiroRoute: typeof ApiPublicBiKpisFinanceiroRoute
+  ApiPublicBiKpisOperacaoRoute: typeof ApiPublicBiKpisOperacaoRoute
+  ApiPublicBiOperacaoRoute: typeof ApiPublicBiOperacaoRoute
   PropostaAceiteTokenRoute: typeof PropostaAceiteTokenRoute
 }
 
@@ -286,6 +366,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropostaAceiteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bi-operacao': {
+      id: '/api/public/bi-operacao'
+      path: '/api/public/bi-operacao'
+      fullPath: '/api/public/bi-operacao'
+      preLoaderRoute: typeof ApiPublicBiOperacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/bi-kpis-operacao': {
+      id: '/api/public/bi-kpis-operacao'
+      path: '/api/public/bi-kpis-operacao'
+      fullPath: '/api/public/bi-kpis-operacao'
+      preLoaderRoute: typeof ApiPublicBiKpisOperacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/bi-kpis-financeiro': {
+      id: '/api/public/bi-kpis-financeiro'
+      path: '/api/public/bi-kpis-financeiro'
+      fullPath: '/api/public/bi-kpis-financeiro'
+      preLoaderRoute: typeof ApiPublicBiKpisFinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/bi-kpis-comercial': {
+      id: '/api/public/bi-kpis-comercial'
+      path: '/api/public/bi-kpis-comercial'
+      fullPath: '/api/public/bi-kpis-comercial'
+      preLoaderRoute: typeof ApiPublicBiKpisComercialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/bi-financeiro': {
+      id: '/api/public/bi-financeiro'
+      path: '/api/public/bi-financeiro'
+      fullPath: '/api/public/bi-financeiro'
+      preLoaderRoute: typeof ApiPublicBiFinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/bi-comercial': {
+      id: '/api/public/bi-comercial'
+      path: '/api/public/bi-comercial'
+      fullPath: '/api/public/bi-comercial'
+      preLoaderRoute: typeof ApiPublicBiComercialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/api-keys': {
       id: '/_authenticated/admin/api-keys'
       path: '/api-keys'
@@ -346,6 +468,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicBiComercialRoute: ApiPublicBiComercialRoute,
+  ApiPublicBiFinanceiroRoute: ApiPublicBiFinanceiroRoute,
+  ApiPublicBiKpisComercialRoute: ApiPublicBiKpisComercialRoute,
+  ApiPublicBiKpisFinanceiroRoute: ApiPublicBiKpisFinanceiroRoute,
+  ApiPublicBiKpisOperacaoRoute: ApiPublicBiKpisOperacaoRoute,
+  ApiPublicBiOperacaoRoute: ApiPublicBiOperacaoRoute,
   PropostaAceiteTokenRoute: PropostaAceiteTokenRoute,
 }
 export const routeTree = rootRouteImport
