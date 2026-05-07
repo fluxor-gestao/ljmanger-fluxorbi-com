@@ -10,6 +10,8 @@ const dashboards = [
     title: "Dashboard Comercial",
     icon: ShoppingCart,
     gradient: "from-purple-500 to-purple-700",
+    embedUrl:
+      "https://app.powerbi.com/view?r=eyJrIjoiMDk0YTI0NmQtOTdjNC00ZGY1LTgyOTQtZjg0ZmZkNzY0MTE1IiwidCI6ImViYzMxZTJiLWE5OTYtNGQ4MS04NzIwLWRjNWNkYWQ4YzNmYyJ9",
   },
   {
     id: "financeiro",
@@ -83,13 +85,22 @@ function BI() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="flex min-h-[420px] items-center justify-center bg-background p-6">
-              <div className="text-center">
-                <BarChart3 className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground">BI selecionado</p>
-                <p className="mt-1 text-sm text-muted-foreground">{activeDashboard.title} será exibido aqui.</p>
+            {activeDashboard.embedUrl ? (
+              <iframe
+                title={activeDashboard.title}
+                src={activeDashboard.embedUrl}
+                className="h-[75vh] w-full border-0"
+                allowFullScreen
+              />
+            ) : (
+              <div className="flex min-h-[420px] items-center justify-center bg-background p-6">
+                <div className="text-center">
+                  <BarChart3 className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+                  <p className="text-sm font-medium text-foreground">BI selecionado</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{activeDashboard.title} será exibido aqui.</p>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
