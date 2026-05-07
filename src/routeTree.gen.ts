@@ -27,6 +27,7 @@ import { Route as ApiPublicBiKpisFinanceiroRouteImport } from './routes/api/publ
 import { Route as ApiPublicBiKpisComercialRouteImport } from './routes/api/public/bi-kpis-comercial'
 import { Route as ApiPublicBiFinanceiroRouteImport } from './routes/api/public/bi-financeiro'
 import { Route as ApiPublicBiComercialRouteImport } from './routes/api/public/bi-comercial'
+import { Route as ApiPublicSplatRouteImport } from './routes/api/public/$'
 import { Route as AuthenticatedAdminApiKeysRouteImport } from './routes/_authenticated/admin_.api-keys'
 import { Route as AuthenticatedComercialDevisIdRouteImport } from './routes/_authenticated/comercial_.devis.$id'
 
@@ -122,6 +123,11 @@ const ApiPublicBiComercialRoute = ApiPublicBiComercialRouteImport.update({
   path: '/api/public/bi-comercial',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSplatRoute = ApiPublicSplatRouteImport.update({
+  id: '/api/public/$',
+  path: '/api/public/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminApiKeysRoute =
   AuthenticatedAdminApiKeysRouteImport.update({
     id: '/admin_/api-keys',
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/hub': typeof AuthenticatedHubRoute
   '/operacao': typeof AuthenticatedOperacaoRoute
   '/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
   '/api/public/bi-kpis-comercial': typeof ApiPublicBiKpisComercialRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/hub': typeof AuthenticatedHubRoute
   '/operacao': typeof AuthenticatedOperacaoRoute
   '/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
   '/api/public/bi-kpis-comercial': typeof ApiPublicBiKpisComercialRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/_authenticated/hub': typeof AuthenticatedHubRoute
   '/_authenticated/operacao': typeof AuthenticatedOperacaoRoute
   '/_authenticated/admin_/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
   '/api/public/bi-kpis-comercial': typeof ApiPublicBiKpisComercialRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/hub'
     | '/operacao'
     | '/admin/api-keys'
+    | '/api/public/$'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
     | '/api/public/bi-kpis-comercial'
@@ -235,6 +245,7 @@ export interface FileRouteTypes {
     | '/hub'
     | '/operacao'
     | '/admin/api-keys'
+    | '/api/public/$'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
     | '/api/public/bi-kpis-comercial'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/_authenticated/hub'
     | '/_authenticated/operacao'
     | '/_authenticated/admin_/api-keys'
+    | '/api/public/$'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
     | '/api/public/bi-kpis-comercial'
@@ -271,6 +283,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicSplatRoute: typeof ApiPublicSplatRoute
   ApiPublicBiComercialRoute: typeof ApiPublicBiComercialRoute
   ApiPublicBiFinanceiroRoute: typeof ApiPublicBiFinanceiroRoute
   ApiPublicBiKpisComercialRoute: typeof ApiPublicBiKpisComercialRoute
@@ -408,6 +421,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBiComercialRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/$': {
+      id: '/api/public/$'
+      path: '/api/public/$'
+      fullPath: '/api/public/$'
+      preLoaderRoute: typeof ApiPublicSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin_/api-keys': {
       id: '/_authenticated/admin_/api-keys'
       path: '/admin/api-keys'
@@ -459,6 +479,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicSplatRoute: ApiPublicSplatRoute,
   ApiPublicBiComercialRoute: ApiPublicBiComercialRoute,
   ApiPublicBiFinanceiroRoute: ApiPublicBiFinanceiroRoute,
   ApiPublicBiKpisComercialRoute: ApiPublicBiKpisComercialRoute,

@@ -35,7 +35,11 @@ type ApiKey = {
 
 const ALL_SCOPES = ["comercial", "financeiro", "operacao"] as const;
 
-const FN_BASE = typeof window !== "undefined" ? `${window.location.origin}/api/public` : "/api/public";
+// Stable production URL for the published deployment. Use this in Power BI / external
+// integrations — NEVER use the editor preview URL (lovableproject.com), which requires
+// Lovable login and returns 302 redirects to clients without a session.
+const LOVABLE_PROJECT_ID = "cf53888c-5892-4d07-b039-dfe5e9ea2b47";
+const FN_BASE = `https://project--${LOVABLE_PROJECT_ID}.lovable.app/api/public`;
 
 async function sha256Hex(input: string): Promise<string> {
   const buf = new TextEncoder().encode(input);

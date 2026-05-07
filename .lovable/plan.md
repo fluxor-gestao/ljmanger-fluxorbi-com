@@ -1,67 +1,68 @@
 ## Objetivo
 
-Aplicar mitigações **(a) avisar quando truncar** e **(b) exigir `from`/`to` em `?all=true`**, e já preparar o terreno para que os KPIs migrem de `fetchAll` para **agregação no Postgres** (RPC / view materializada), sem reescrever o BI depois.
+Garantir que **qualquer** request a `/api/public/*` retorne JSON (nunca o HTML do shell SPA), e expor a URL estável correta na tela de API Keys para que o Power BI nunca mais receba 302 → HTML.
 
 ---
 
-## 1. `src/lib/bi-auth.server.ts`
+## 1. Catch-all server route — `src/routes/api/public/$.ts` (novo)
 
-- `fetchAll<T>` passa a retornar `{ data, total, truncated, error }` — `truncated = true` quando atinge `MAX_ALL_ROWS` (200k) e ainda havia chunk cheio.
-- `validateBiRequest`: quando `all=true`, **exigir** `from` E `to` (formato `YYYY-MM-DD`). Sem isso → `400` com mensagem clara.
-- Validar também janela máxima (ex.: `to - from <= 366 dias`) → força BI a paginar por janelas grandes mas não absurdas.
-- Adicionar parâmetro opcional `MAX_WINDOW_DAYS = 366` exposto como const exportada.
+Cria um server route splat que responde **JSON 404** para qualquer caminho não casado em `/api/public/*` (ex.: `bi-comerial`, `bi-comercial/`, `bi-comercial/foo`). Usa `jsonResponse()` do helper existente, então herda `Content-Type: application/json` + CORS.
 
-## 2. Endpoints de dados brutos (`bi-comercial`, `bi-financeiro`, `bi-operacao`)
+```ts
+import { createFileRoute } from "@tanstack/react-router";
+import { CORS_HEADERS, jsonResponse } from "@/lib/bi-auth.server";
 
-- Propagar `truncated` no `meta`:
-  ```json
-  { "data": [...], "meta": { "total": 200000, "all": true, "truncated": true, "warning": "Resultado truncado em 200000 linhas. Reduza o intervalo from/to." } }
-  ```
-- Sem mudanças no caminho paginado normal.
+function notFoundJson({ params }: { params: { _splat?: string } }) {
+  return jsonResponse(
+    {
+      error: "Not found",
+      path: `/api/public/${params._splat ?? ""}`,
+      hint: "Available: bi-comercial, bi-financeiro, bi-operacao, bi-kpis-comercial, bi-kpis-financeiro, bi-kpis-operacao.",
+    },
+    404,
+  );
+}
 
-## 3. KPIs — preparar migração para agregação no DB
+export const Route = createFileRoute("/api/public/$")({
+  server: {
+    handlers: {
+      OPTIONS: async () => new Response(null, { status: 204, headers: CORS_HEADERS }),
+      GET: notFoundJson,
+      POST: notFoundJson,
+      PUT: notFoundJson,
+      DELETE: notFoundJson,
+      PATCH: notFoundJson,
+    },
+  },
+});
+```
 
-Criar **funções SQL `SECURITY DEFINER`** que retornam KPIs já agregados (uma query, sem trafegar linhas):
+Como TanStack Router prioriza rotas literais sobre splat, os 6 endpoints existentes continuam funcionando normalmente — o splat só atende caminhos não reconhecidos.
 
-- `bi_kpis_comercial(_from date, _to date)` → retorna jsonb com `total_devis`, `accepted`, `rejected`, `conversion_rate`, `total_amount`, `accepted_amount`, `avg_ticket`, `by_status`.
-- `bi_kpis_financeiro(_from date, _to date)` → `total_in`, `total_out`, `net`, `entries_count`, `by_month` (via `date_trunc('month', entry_date)` + `group by`).
-- `bi_kpis_operacao(_from date, _to date)` → `total_services`, `completed`, `delayed`, `in_progress`, `by_status`.
+## 2. URL estável na tela de docs — `src/routes/_authenticated/admin_.api-keys.tsx`
 
-Os 3 endpoints de KPIs passam a chamar `supabaseAdmin.rpc('bi_kpis_xxx', { _from, _to })` em vez de `fetchAll`. Resposta fica idêntica ao formato atual → BI não quebra.
+Trocar a montagem dinâmica baseada em `window.location.origin` (que pode ser `id-preview--*.lovableproject.com` e exige login) por uma URL **estável de produção**:
 
-Vantagens:
-- KPI em **1 request SQL**, não 200 chunks.
-- Sem risco de truncamento silencioso.
-- Funciona sem limite de linhas, em milissegundos.
-- `from`/`to` viram opcionais nesses endpoints (o agregado já é barato).
+```ts
+// linha 38
+const LOVABLE_PROJECT_ID = "cf53888c-5892-4d07-b039-dfe5e9ea2b47";
+const FN_BASE = `https://project--${LOVABLE_PROJECT_ID}.lovable.app/api/public`;
+```
 
-## 4. `admin_.api-keys.tsx`
-
-- Documentar:
-  - `?all=true` requer `from` e `to` (janela máx 366 dias).
-  - Quando `meta.truncated === true`, refazer o request com janela menor.
-  - KPIs agora rodam direto no banco — sempre exatos, sem custo de paginação.
-- Atualizar exemplos `curl`.
-
-## 5. Migration SQL
-
-Uma migration cria as 3 funções RPC `bi_kpis_*` no schema `public`, com `GRANT EXECUTE` para `service_role` (já é o que `supabaseAdmin` usa).
+Assim, todos os `curl` exibidos e a URL copiada pelo botão "Copy" usam o domínio estável que serve o build publicado, sem auth-bridge.
 
 ---
+
+## Importante (fora do código)
+
+O custom domain `ljmanager.fluxorbi.com` está servindo build antigo (404 HTML para `/api/public/bi-comercial`). **Após aplicar, é necessário clicar em Publish** para que o build com as rotas vá ao ar no domínio publicado / custom domain.
 
 ## Arquivos tocados
 
-- `src/lib/bi-auth.server.ts` (truncated + validação from/to)
-- `src/routes/api/public/bi-comercial.ts` (meta.truncated)
-- `src/routes/api/public/bi-financeiro.ts` (meta.truncated)
-- `src/routes/api/public/bi-operacao.ts` (meta.truncated)
-- `src/routes/api/public/bi-kpis-comercial.ts` (RPC)
-- `src/routes/api/public/bi-kpis-financeiro.ts` (RPC)
-- `src/routes/api/public/bi-kpis-operacao.ts` (RPC)
-- `src/routes/_authenticated/admin_.api-keys.tsx` (docs)
-- migration SQL com as 3 funções RPC
+- `src/routes/api/public/$.ts` (novo)
+- `src/routes/_authenticated/admin_.api-keys.tsx` (linha 38)
 
-## Fora de escopo (futuro)
+## Fora de escopo
 
-- View materializada com refresh agendado (só se KPIs ficarem lentos mesmo com RPC).
-- Streaming NDJSON / cursor pagination para `?all=true` muito grandes.
+- Mudar comportamento do redirect 302 do `*.lovableproject.com` (config do Lovable).
+- Streaming / cursor pagination (já listado em planos anteriores).
