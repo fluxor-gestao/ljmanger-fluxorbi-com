@@ -737,6 +737,18 @@ export type Database = {
     }
     Functions: {
       auto_advance_sent_devis: { Args: never; Returns: undefined }
+      bi_kpis_comercial: {
+        Args: { _from?: string; _to?: string }
+        Returns: Json
+      }
+      bi_kpis_financeiro: {
+        Args: { _from?: string; _to?: string }
+        Returns: Json
+      }
+      bi_kpis_operacao: {
+        Args: { _from?: string; _to?: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
