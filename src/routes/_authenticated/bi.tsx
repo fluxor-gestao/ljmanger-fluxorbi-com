@@ -18,12 +18,14 @@ const dashboards = [
     title: "Dashboard Financeiro",
     icon: DollarSign,
     gradient: "from-blue-500 to-blue-700",
+    embedUrl: undefined as string | undefined,
   },
   {
     id: "operacao",
     title: "Dashboard Operação",
     icon: BriefcaseBusiness,
     gradient: "from-emerald-600 to-emerald-800",
+    embedUrl: undefined as string | undefined,
   },
 ] as const;
 
