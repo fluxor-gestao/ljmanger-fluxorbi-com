@@ -77,12 +77,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lundgaard Hub" },
-      { name: "description", content: "Sistema Central de Gestão Empresarial" },
+      { name: "description", content: "Sistema Central de Gestão Lundgaard Jensen" },
       { property: "og:title", content: "Lundgaard Hub" },
-      { property: "og:description", content: "Sistema Central de Gestão Empresarial" },
+      { property: "og:description", content: "Sistema Central de Gestão Lundgaard Jensen" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Lundgaard Hub" },
+      { name: "twitter:description", content: "Sistema Central de Gestão Lundgaard Jensen" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/xbA63RrXBpdPPoLhGYvg7ABF8bP2/social-images/social-1778139518683-Logo-Lundgaard-Jensen-Banner.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/xbA63RrXBpdPPoLhGYvg7ABF8bP2/social-images/social-1778139518683-Logo-Lundgaard-Jensen-Banner.webp" },
     ],
     links: [
       {
