@@ -35,8 +35,7 @@ type ApiKey = {
 
 const ALL_SCOPES = ["comercial", "financeiro", "operacao"] as const;
 
-const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-const FN_BASE = `https://${PROJECT_ID}.functions.supabase.co`;
+const FN_BASE = typeof window !== "undefined" ? `${window.location.origin}/api/public` : "/api/public";
 
 async function sha256Hex(input: string): Promise<string> {
   const buf = new TextEncoder().encode(input);
@@ -132,6 +131,11 @@ function ApiKeys() {
     { path: "/bi-kpis-financeiro", desc: "KPIs financeiros agregados", scope: "financeiro" },
     { path: "/bi-kpis-operacao", desc: "KPIs de operação agregados", scope: "operacao" },
   ];
+
+  const buildUrl = (path: string, token = "SEU_TOKEN") => {
+    const sep = path.includes("?") ? "&" : "?";
+    return `${FN_BASE}${path}${sep}token=${token}`;
+  };
 
   return (
     <div className="space-y-6">
