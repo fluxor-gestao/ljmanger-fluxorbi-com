@@ -21,9 +21,19 @@ export const Route = createFileRoute("/api/public/bi-operacao")({
         };
 
         if (auth.all) {
-          const { data, total, error } = await fetchAll((from, to) => base().range(from, to));
+          const { data, total, truncated, error } = await fetchAll((from, to) => base().range(from, to));
           if (error) return jsonResponse({ error: error.message }, 500);
-          return jsonResponse({ data, meta: { total, all: true } });
+          return jsonResponse({
+            data,
+            meta: {
+              total,
+              all: true,
+              truncated,
+              ...(truncated && {
+                warning: "Result truncated at 200000 rows. Reduce your from/to window.",
+              }),
+            },
+          });
         }
 
         const offset = (auth.page - 1) * auth.pageSize;
