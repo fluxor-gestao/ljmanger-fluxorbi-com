@@ -1,8 +1,13 @@
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useRouterState } from "@tanstack/react-router";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export function AppLayout() {
+  const isNavigating = useRouterState({
+    select: (s) => s.isLoading || s.isTransitioning,
+  });
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -16,6 +21,11 @@ export function AppLayout() {
           </main>
         </div>
       </div>
+      {isNavigating && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <LoadingScreen message="Abrindo sistema..." />
+        </div>
+      )}
     </SidebarProvider>
   );
 }
