@@ -238,9 +238,17 @@ function ApiKeys() {
           <Card>
             <CardHeader>
               <CardTitle>Como conectar</CardTitle>
-              <CardDescription>Endpoints REST autenticados via header <code>x-api-key</code>.</CardDescription>
+              <CardDescription>
+                Endpoints REST públicos autenticados via <code>?token=</code> na URL. Sem login, ideais para Power BI, Looker, Metabase ou Tableau.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
+              <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs">
+                <ShieldAlert className="h-4 w-4 inline mr-1 text-warning" />
+                <strong>Atenção:</strong> qualquer pessoa com este link consegue baixar os dados.
+                Compartilhe apenas com a ferramenta de BI e revogue a chave imediatamente em caso de vazamento.
+              </div>
+
               <div>
                 <Label className="text-xs text-muted-foreground">URL base</Label>
                 <div className="flex items-center gap-2 mt-1">
@@ -259,6 +267,7 @@ function ApiKeys() {
                       <TableHead>Endpoint</TableHead>
                       <TableHead>Descrição</TableHead>
                       <TableHead>Escopo</TableHead>
+                      <TableHead className="text-right">URL</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -267,29 +276,34 @@ function ApiKeys() {
                         <TableCell className="font-mono text-xs">{e.path}</TableCell>
                         <TableCell>{e.desc}</TableCell>
                         <TableCell><Badge variant="secondary">{e.scope}</Badge></TableCell>
+                        <TableCell className="text-right">
+                          <Button size="sm" variant="ghost" onClick={() => copy(buildUrl(e.path))}>
+                            <Copy className="h-4 w-4 mr-1" /> Copiar
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Endpoints de dados brutos aceitam: <code>?from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&page_size=500</code> (máx 1000).
+                  Endpoints de dados brutos aceitam: <code>&from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&page_size=500</code> (máx 1000).
+                  Substitua <code>SEU_TOKEN</code> pela chave gerada na aba "Chaves".
                 </p>
               </div>
 
               <div>
-                <Label className="text-xs text-muted-foreground">Exemplo curl</Label>
+                <Label className="text-xs text-muted-foreground">Exemplo (curl)</Label>
                 <pre className="bg-muted p-3 rounded text-xs overflow-x-auto mt-1">
-{`curl -H "x-api-key: lk_xxxxx..." \\
-  "${FN_BASE}/bi-financeiro?from=2026-01-01&to=2026-12-31&page=1&page_size=500"`}
+{`curl "${FN_BASE}/bi-financeiro?token=lk_xxxxx&from=2026-01-01&to=2026-12-31&page=1&page_size=500"`}
                 </pre>
               </div>
 
               <div>
-                <Label className="text-xs text-muted-foreground">Power BI (Get Data → Web → Advanced)</Label>
+                <Label className="text-xs text-muted-foreground">Power BI (Get Data → Web)</Label>
                 <ol className="list-decimal list-inside text-sm space-y-1 mt-1">
-                  <li>URL parts: cole a URL completa do endpoint</li>
-                  <li>HTTP request header parameters: adicione <code>x-api-key</code> com o valor da chave</li>
-                  <li>Em "JSON" o Power BI carrega <code>data</code> + <code>meta</code></li>
+                  <li>Cole a URL completa (incluindo <code>?token=...</code>) no campo URL</li>
+                  <li>O Power BI carregará automaticamente o JSON com <code>data</code> + <code>meta</code></li>
+                  <li>Use "Convert to Table" para expandir os registros</li>
                 </ol>
               </div>
             </CardContent>
