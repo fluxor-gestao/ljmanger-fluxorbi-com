@@ -1,24 +1,40 @@
-## Problema
+## Mudanças
 
-Os cliques nas linhas da tabela de Devis (e no botão "olho") não abrem o detalhe porque a navegação está sendo feita interpolando o ID direto na string da URL:
+### 1. Tela de Login (`src/routes/auth.tsx`)
+Ajustar para ficar igual à imagem de referência:
+- Trocar o subtítulo "Acesse sua conta" por **"Faça login"** (em azul, estilo link).
+- Manter o card centralizado, com logo, título "Lundgaard Hub", campos Email/Senha e botão azul "Entrar".
+- Remover o texto "Acesso restrito. Novos usuários são criados pelo administrador." (não aparece na referência).
+- Garantir fundo cinza claro (`bg-muted/30`) como na imagem.
 
-```ts
-navigate({ to: `/comercial/devis/${d.id}` })
+### 2. Tela de Transição (`src/components/LoadingScreen.tsx`)
+- Trocar a mensagem padrão para **"Abrindo sistema..."**.
+- Já está com logo + indicador azul pulsante — bate com a referência.
+
+### 3. Mostrar a tela de transição em TODA navegação
+Hoje a `LoadingScreen` só aparece enquanto o auth carrega. Vamos exibi-la também:
+
+**a) Logo após o login** — em `src/routes/auth.tsx`, ao concluir `signInWithPassword` com sucesso, mostrar a `LoadingScreen` antes de navegar para `/hub` (estado local `redirecting`).
+
+**b) Em qualquer clique de navegação dentro do sistema** — em `src/components/AppLayout.tsx`, usar `useRouterState({ select: s => s.isLoading || s.isTransitioning })` do TanStack Router para detectar navegações em andamento e renderizar um overlay com a `LoadingScreen` por cima do conteúdo enquanto a próxima rota carrega (loaders, code-splitting, etc.).
+
+```tsx
+const isNavigating = useRouterState({
+  select: (s) => s.isLoading || s.isTransitioning,
+});
+// ...
+{isNavigating && (
+  <div className="fixed inset-0 z-50 bg-background">
+    <LoadingScreen message="Abrindo sistema..." />
+  </div>
+)}
 ```
 
-O TanStack Router exige rotas dinâmicas com `params` separados — interpolar em template string quebra a resolução do path com `$id` e a navegação falha silenciosamente. (Por isso a URL atual `/comercial/devis/e15d0371...` que você vê foi possivelmente aberta por outro caminho — o Kanban usa o mesmo padrão errado e também está afetado.)
+Isso reproduz o comportamento do sistema antigo: ao clicar em qualquer módulo (Comercial, Financeiro, Devis, etc.), a tela de transição aparece até a próxima rota terminar de carregar.
 
-## Correção
+### Arquivos alterados
+- `src/routes/auth.tsx` — visual + redirect com loading.
+- `src/components/LoadingScreen.tsx` — mensagem padrão "Abrindo sistema...".
+- `src/components/AppLayout.tsx` — overlay de transição em navegações.
 
-Trocar todos os `navigate` e usos análogos para o formato type-safe:
-
-```ts
-navigate({ to: "/comercial/devis/$id", params: { id: d.id } })
-```
-
-### Arquivos a alterar
-
-1. **`src/routes/_authenticated/comercial.tsx`** (linhas 605 e 613) — clique na linha e botão de ação na tabela de Devis.
-2. **`src/components/devis/DevisKanban.tsx`** (linha 121) — clique nos cards do Kanban.
-
-Sem mudanças de schema, sem mudanças de UI — apenas ajuste de chamadas de navegação.
+Sem mudanças de schema, sem novas dependências.
