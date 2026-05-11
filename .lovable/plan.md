@@ -1,36 +1,21 @@
-## Objetivo
+## Adicionar opção "Alterar senha" em Opções/Usuários
 
-Substituir o placeholder do dashboard **Comercial** em `/bi` por um iframe que carrega o relatório Power BI publicado.
+### O que será feito
 
-## Mudança — `src/routes/_authenticated/bi.tsx`
+1. **Backend (`supabase/functions/manage-users/index.ts`)**: adicionar nova `action: "reset-password"` que recebe `user_id` e `new_password`, valida que o caller é admin (já implementado) e chama `admin.auth.admin.updateUserById(user_id, { password })`.
 
-1. Adicionar campo opcional `embedUrl` em cada item de `dashboards`. Apenas o `comercial` recebe a URL agora:
+2. **Frontend (`src/routes/_authenticated/admin.tsx`)**:
+   - Adicionar um botão com ícone de chave (`KeyRound`) ao lado dos botões Editar/Excluir em cada linha da tabela de usuários.
+   - Abrir um Dialog "Redefinir senha" pedindo a nova senha (input password, mínimo 6 caracteres) + confirmação.
+   - Criar mutation `resetPassword` que invoca a edge function com `action: "reset-password"`.
+   - Toast de sucesso/erro.
 
-```ts
-{
-  id: "comercial",
-  title: "Dashboard Comercial",
-  icon: ShoppingCart,
-  gradient: "from-purple-500 to-purple-700",
-  embedUrl:
-    "https://app.powerbi.com/view?r=eyJrIjoiMDk0YTI0NmQtOTdjNC00ZGY1LTgyOTQtZjg0ZmZkNzY0MTE1IiwidCI6ImViYzMxZTJiLWE5OTYtNGQ4MS04NzIwLWRjNWNkYWQ4YzNmYyJ9",
-}
-```
+### Como o admin usará
 
-2. No `CardContent` do dashboard ativo, quando `activeDashboard.embedUrl` existir, renderizar:
+Na página **Opções / Usuários** → tabela → ícone 🔑 ao lado do lápis → digita nova senha → Salvar. A senha do usuário é trocada imediatamente e ele pode logar com a nova senha.
 
-```tsx
-<iframe
-  title={activeDashboard.title}
-  src={activeDashboard.embedUrl}
-  className="h-[75vh] w-full border-0"
-  allowFullScreen
-/>
-```
+### Observações
 
-Caso contrário, manter o placeholder atual (Financeiro e Operação continuam como estão até receberem suas URLs).
-
-## Fora de escopo
-
-- URLs de Financeiro e Operação (adicionar quando você enviar).
-- Auth/RLS no Power BI (o link `view?r=...` é público por design da Microsoft).
+- Funciona para qualquer usuário (inclusive o próprio admin).
+- Não envia email — é uma redefinição direta feita pelo admin.
+- Usa a mesma estrutura segura já existente (service role key fica só na edge function, validação de admin via `has_role`).
