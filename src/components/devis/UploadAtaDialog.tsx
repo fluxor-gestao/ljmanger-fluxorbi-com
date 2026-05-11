@@ -146,7 +146,7 @@ export default function UploadAtaDialog({ open, onOpenChange, clients, onConfirm
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const p = data.data as AnalyzedPayload;
+      const p = data.payload as AnalyzedPayload;
       setPayload(p);
       setEditClient(p.client);
       // Pre-select match

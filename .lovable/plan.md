@@ -1,21 +1,33 @@
-## Adicionar opção "Alterar senha" em Opções/Usuários
+## Problema
 
-### O que será feito
+Ao clicar em "Analisar com IA" no Upload de Relatório/Ata, aparece o erro:
+`Cannot read properties of undefined (reading 'client')`
 
-1. **Backend (`supabase/functions/manage-users/index.ts`)**: adicionar nova `action: "reset-password"` que recebe `user_id` e `new_password`, valida que o caller é admin (já implementado) e chama `admin.auth.admin.updateUserById(user_id, { password })`.
+## Causa
 
-2. **Frontend (`src/routes/_authenticated/admin.tsx`)**:
-   - Adicionar um botão com ícone de chave (`KeyRound`) ao lado dos botões Editar/Excluir em cada linha da tabela de usuários.
-   - Abrir um Dialog "Redefinir senha" pedindo a nova senha (input password, mínimo 6 caracteres) + confirmação.
-   - Criar mutation `resetPassword` que invoca a edge function com `action: "reset-password"`.
-   - Toast de sucesso/erro.
+A edge function `supabase/functions/analyze-meeting-report/index.ts` retorna o resultado como `{ payload }`:
 
-### Como o admin usará
+```ts
+return new Response(JSON.stringify({ payload }), ...)
+```
 
-Na página **Opções / Usuários** → tabela → ícone 🔑 ao lado do lápis → digita nova senha → Salvar. A senha do usuário é trocada imediatamente e ele pode logar com a nova senha.
+Mas o frontend em `src/components/devis/UploadAtaDialog.tsx` (linha 149) lê o campo errado:
 
-### Observações
+```ts
+const p = data.data as AnalyzedPayload;  // ❌ data.data é undefined
+setEditClient(p.client);                  // 💥 crash aqui
+```
 
-- Funciona para qualquer usuário (inclusive o próprio admin).
-- Não envia email — é uma redefinição direta feita pelo admin.
-- Usa a mesma estrutura segura já existente (service role key fica só na edge function, validação de admin via `has_role`).
+## Correção (1 linha)
+
+Em `src/components/devis/UploadAtaDialog.tsx`, linha 149:
+
+```ts
+const p = data.payload as AnalyzedPayload;
+```
+
+Nenhuma outra alteração é necessária — o restante do fluxo (matches, edição de cliente, criação do devis) já espera o objeto `AnalyzedPayload` correto.
+
+## Arquivos alterados
+
+- `src/components/devis/UploadAtaDialog.tsx` (1 linha)
