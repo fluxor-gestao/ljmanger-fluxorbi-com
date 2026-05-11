@@ -463,7 +463,7 @@ function Admin() {
                               variant="ghost"
                               title="Redefinir senha"
                               onClick={() => {
-                                setResetTarget({ user_id: p.user_id, label: p.full_name || p.email });
+                                setResetTarget({ user_id: p.user_id, label: p.full_name || p.email || "usuário" });
                                 setResetPwd("");
                                 setResetPwdConfirm("");
                                 setResetOpen(true);
