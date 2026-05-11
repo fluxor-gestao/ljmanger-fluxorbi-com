@@ -458,6 +458,19 @@ function Admin() {
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="Redefinir senha"
+                              onClick={() => {
+                                setResetTarget({ user_id: p.user_id, label: p.full_name || p.email });
+                                setResetPwd("");
+                                setResetPwdConfirm("");
+                                setResetOpen(true);
+                              }}
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
                             {!isSelf && (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
