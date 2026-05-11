@@ -56,7 +56,12 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Senha inválida (mínimo 6 caracteres)" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const { error } = await admin.auth.admin.updateUserById(user_id, { password: new_password });
-      if (error) throw error;
+      if (error) {
+        const msg = (error as any)?.code === "weak_password"
+          ? "Senha muito fraca ou exposta em vazamentos públicos. Use uma senha mais forte (ex.: combine letras maiúsculas, minúsculas, números e símbolos)."
+          : error.message;
+        return new Response(JSON.stringify({ error: msg }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
