@@ -89,10 +89,11 @@ export default function ValidationChecklist({ devis, form, editing, onToggle, pr
 
   const invalidate = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("devis")
-        .update({ validated_at: null, validated_by: null })
-        .eq("id", devis.id);
+      const payload: any = { validated_at: null, validated_by: null };
+      if (devis.status === "pronta_para_envio") {
+        payload.status = "aguardando_validacao";
+      }
+      const { error } = await supabase.from("devis").update(payload).eq("id", devis.id);
       if (error) throw error;
     },
     onSuccess: () => {
