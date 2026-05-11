@@ -417,6 +417,48 @@ function Admin() {
             </DialogContent>
           </Dialog>
 
+          {/* Reset Password Dialog */}
+          <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Redefinir senha</DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (resetPwd !== resetPwdConfirm) {
+                    toast.error("As senhas não coincidem");
+                    return;
+                  }
+                  if (resetTarget) {
+                    resetPassword.mutate({ user_id: resetTarget.user_id, new_password: resetPwd });
+                  }
+                }}
+                className="space-y-4"
+              >
+                <p className="text-sm text-muted-foreground">
+                  Definir nova senha para <strong>{resetTarget?.label}</strong>.
+                </p>
+                <div className="space-y-2">
+                  <Label>Nova senha</Label>
+                  <Input type="password" value={resetPwd} onChange={(e) => setResetPwd(e.target.value)} required minLength={6} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Confirmar nova senha</Label>
+                  <Input type="password" value={resetPwdConfirm} onChange={(e) => setResetPwdConfirm(e.target.value)} required minLength={6} />
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">Cancelar</Button>
+                  </DialogClose>
+                  <Button type="submit" disabled={resetPassword.isPending}>
+                    {resetPassword.isPending ? "Salvando..." : "Salvar"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
           <Card>
             <Table>
               <TableHeader>
