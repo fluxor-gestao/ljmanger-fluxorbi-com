@@ -63,18 +63,20 @@ export default function ValidationChecklist({ devis, form, editing, onToggle, pr
 
   const validate = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("devis")
-        .update({
-          validation_client_confirmed: true,
-          validation_service_confirmed: true,
-          validation_sector_defined: true,
-          validation_amount_confirmed: true,
-          validation_deadline_defined: true,
-          validated_at: new Date().toISOString(),
-          validated_by: user?.id ?? null,
-        })
-        .eq("id", devis.id);
+      const preSend = ["rascunho", "reuniao_realizada", "proposta_em_geracao", "aguardando_validacao"];
+      const payload: any = {
+        validation_client_confirmed: true,
+        validation_service_confirmed: true,
+        validation_sector_defined: true,
+        validation_amount_confirmed: true,
+        validation_deadline_defined: true,
+        validated_at: new Date().toISOString(),
+        validated_by: user?.id ?? null,
+      };
+      if (preSend.includes(devis.status)) {
+        payload.status = "pronta_para_envio";
+      }
+      const { error } = await supabase.from("devis").update(payload).eq("id", devis.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -87,10 +89,11 @@ export default function ValidationChecklist({ devis, form, editing, onToggle, pr
 
   const invalidate = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("devis")
-        .update({ validated_at: null, validated_by: null })
-        .eq("id", devis.id);
+      const payload: any = { validated_at: null, validated_by: null };
+      if (devis.status === "pronta_para_envio") {
+        payload.status = "aguardando_validacao";
+      }
+      const { error } = await supabase.from("devis").update(payload).eq("id", devis.id);
       if (error) throw error;
     },
     onSuccess: () => {

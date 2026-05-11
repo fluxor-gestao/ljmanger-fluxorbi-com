@@ -225,7 +225,8 @@ function DevisDetail() {
               <Button variant="outline" onClick={handleExportPdf}>
                 <FileDown className="h-4 w-4 mr-2" /> Exportar PDF
               </Button>
-              {(devis?.status ?? "") === "pronta_para_envio" && (
+              {!!devis.validated_at &&
+                ["pronta_para_envio", "rascunho", "reuniao_realizada", "proposta_em_geracao", "aguardando_validacao", "enviado"].includes(devis.status) && (
                 <Button onClick={() => setSendOpen(true)} className="bg-green-600 hover:bg-green-700">
                   <Send className="h-4 w-4 mr-2" /> Enviar ao cliente
                 </Button>
