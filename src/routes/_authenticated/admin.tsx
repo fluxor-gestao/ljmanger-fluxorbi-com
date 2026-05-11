@@ -161,6 +161,10 @@ function Admin() {
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<{ user_id: string; currentRole: string } | null>(null);
   const [newRole, setNewRole] = useState("gerencial");
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<{ user_id: string; label: string } | null>(null);
+  const [resetPwd, setResetPwd] = useState("");
+  const [resetPwdConfirm, setResetPwdConfirm] = useState("");
 
   // Form state for creating user
   const [formName, setFormName] = useState("");
