@@ -161,6 +161,10 @@ function Admin() {
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<{ user_id: string; currentRole: string } | null>(null);
   const [newRole, setNewRole] = useState("gerencial");
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<{ user_id: string; label: string } | null>(null);
+  const [resetPwd, setResetPwd] = useState("");
+  const [resetPwdConfirm, setResetPwdConfirm] = useState("");
 
   // Form state for creating user
   const [formName, setFormName] = useState("");
@@ -275,6 +279,19 @@ function Admin() {
       toast.success("Usuário removido!");
       queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
       queryClient.invalidateQueries({ queryKey: ["admin-roles"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: ({ user_id, new_password }: { user_id: string; new_password: string }) =>
+      invokeManageUsers({ action: "reset-password", user_id, new_password }),
+    onSuccess: () => {
+      toast.success("Senha redefinida!");
+      setResetOpen(false);
+      setResetPwd("");
+      setResetPwdConfirm("");
+      setResetTarget(null);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -400,6 +417,48 @@ function Admin() {
             </DialogContent>
           </Dialog>
 
+          {/* Reset Password Dialog */}
+          <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Redefinir senha</DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (resetPwd !== resetPwdConfirm) {
+                    toast.error("As senhas não coincidem");
+                    return;
+                  }
+                  if (resetTarget) {
+                    resetPassword.mutate({ user_id: resetTarget.user_id, new_password: resetPwd });
+                  }
+                }}
+                className="space-y-4"
+              >
+                <p className="text-sm text-muted-foreground">
+                  Definir nova senha para <strong>{resetTarget?.label}</strong>.
+                </p>
+                <div className="space-y-2">
+                  <Label>Nova senha</Label>
+                  <Input type="password" value={resetPwd} onChange={(e) => setResetPwd(e.target.value)} required minLength={6} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Confirmar nova senha</Label>
+                  <Input type="password" value={resetPwdConfirm} onChange={(e) => setResetPwdConfirm(e.target.value)} required minLength={6} />
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">Cancelar</Button>
+                  </DialogClose>
+                  <Button type="submit" disabled={resetPassword.isPending}>
+                    {resetPassword.isPending ? "Salvando..." : "Salvar"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
           <Card>
             <Table>
               <TableHeader>
@@ -440,6 +499,19 @@ function Admin() {
                               }}
                             >
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="Redefinir senha"
+                              onClick={() => {
+                                setResetTarget({ user_id: p.user_id, label: p.full_name || p.email || "usuário" });
+                                setResetPwd("");
+                                setResetPwdConfirm("");
+                                setResetOpen(true);
+                              }}
+                            >
+                              <KeyRound className="h-4 w-4" />
                             </Button>
                             {!isSelf && (
                               <AlertDialog>
