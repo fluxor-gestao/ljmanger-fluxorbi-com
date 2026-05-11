@@ -50,6 +50,16 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (action === "reset-password") {
+      const { user_id, new_password } = body;
+      if (!user_id || !new_password || String(new_password).length < 6) {
+        return new Response(JSON.stringify({ error: "Senha inválida (mínimo 6 caracteres)" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { error } = await admin.auth.admin.updateUserById(user_id, { password: new_password });
+      if (error) throw error;
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (action === "delete") {
       const { user_id } = body;
       const { error } = await admin.auth.admin.deleteUser(user_id);
