@@ -283,6 +283,19 @@ function Admin() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const resetPassword = useMutation({
+    mutationFn: ({ user_id, new_password }: { user_id: string; new_password: string }) =>
+      invokeManageUsers({ action: "reset-password", user_id, new_password }),
+    onSuccess: () => {
+      toast.success("Senha redefinida!");
+      setResetOpen(false);
+      setResetPwd("");
+      setResetPwdConfirm("");
+      setResetTarget(null);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const saveSettings = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("system_settings").upsert({
