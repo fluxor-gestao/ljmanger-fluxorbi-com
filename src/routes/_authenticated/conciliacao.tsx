@@ -392,9 +392,11 @@ function Conciliacao() {
 
   // In-memory automatic suggestion (does not persist)
   const autoSuggest = (stmt: any) => {
+    const stmtDir = stmt.direction || (Number(stmt.amount) < 0 ? "saida" : "entrada");
+    const stmtAmt = Math.abs(Number(stmt.amount));
     const candidates = financialEntries.filter((fe) => {
-      const feAmount = stmt.direction === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
-      const amountMatch = Math.abs(feAmount - Number(stmt.amount)) < 0.01;
+      const feAmount = stmtDir === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
+      const amountMatch = Math.abs(feAmount - stmtAmt) < 0.01;
       const dateDiff = Math.abs(new Date(fe.entry_date).getTime() - new Date(stmt.transaction_date).getTime());
       const dateMatch = dateDiff < 5 * 24 * 60 * 60 * 1000;
       return amountMatch && dateMatch;
