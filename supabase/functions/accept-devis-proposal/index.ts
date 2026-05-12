@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
         } catch {}
         const updates: any = {
           rejected_at: new Date().toISOString(),
-          status: "recusada",
+          status: "rejeitada",
           rejected_ip: ip,
         };
         if (reason) updates.notes = reason;
