@@ -407,6 +407,23 @@ function Conciliacao() {
   // Pair conciliation: create or update match + flip statuses
   const conciliatePair = useMutation({
     mutationFn: async ({ stmt, fe, existingMatchId }: { stmt: any; fe: any; existingMatchId?: string }) => {
+      const stmtDir = stmt.direction || (Number(stmt.amount) < 0 ? "saida" : "entrada");
+      const stmtAmt = Math.abs(Number(stmt.amount));
+      const feAmount = stmtDir === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
+      const feHasOpposite = stmtDir === "entrada" ? Number(fe.amount_out) > 0 : Number(fe.amount_in) > 0;
+      const amountDiff = Math.abs(feAmount - stmtAmt);
+      if (feHasOpposite || feAmount === 0 || amountDiff >= 0.01) {
+        const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+        const sideLabel = stmtDir === "entrada" ? "entrada" : "saída";
+        const feSide = Number(fe.amount_in) > 0 ? "entrada" : "saída";
+        const ok = window.confirm(
+          `Divergência detectada:\n\n` +
+            `• Banco: ${sideLabel} de ${fmt(stmtAmt)}\n` +
+            `• Lançamento interno: ${feSide} de ${fmt(Number(fe.amount_in) || Number(fe.amount_out))}\n\n` +
+            `Conciliar mesmo assim?`,
+        );
+        if (!ok) throw new Error("Conciliação cancelada por divergência.");
+      }
       let matchId = existingMatchId;
       if (!matchId) {
         const { data, error } = await supabase
