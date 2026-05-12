@@ -162,11 +162,13 @@ function Conciliacao() {
     for (let i = 0; i < transactions.length; i++) {
       const t = transactions[i];
       try {
+        const rawAmount = Number(t.amount);
+        const derivedDirection = t.direction || (rawAmount < 0 ? "saida" : "entrada");
         const { error } = await supabase.from("bank_statement_entries").insert({
           transaction_date: t.date,
           description: t.description,
-          amount: t.amount,
-          direction: t.direction,
+          amount: Math.abs(rawAmount),
+          direction: derivedDirection,
           import_batch_id: batch.id,
           raw_payload: { source: ext, index: i, raw: (t as any).raw ?? null },
         });
