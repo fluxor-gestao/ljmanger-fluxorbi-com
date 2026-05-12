@@ -199,10 +199,12 @@ function Conciliacao() {
       const pendingStatements = statements.filter((s) => s.conciliation_status === "pendente");
 
       for (const stmt of pendingStatements) {
+        const stmtDir = stmt.direction || (Number(stmt.amount) < 0 ? "saida" : "entrada");
+        const stmtAmt = Math.abs(Number(stmt.amount));
         // Find financial entries with same amount and close date
         const candidates = financialEntries.filter((fe) => {
-          const feAmount = stmt.direction === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
-          const amountMatch = Math.abs(feAmount - Number(stmt.amount)) < 0.01;
+          const feAmount = stmtDir === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
+          const amountMatch = Math.abs(feAmount - stmtAmt) < 0.01;
           const dateDiff = Math.abs(new Date(fe.entry_date).getTime() - new Date(stmt.transaction_date).getTime());
           const dateMatch = dateDiff < 5 * 24 * 60 * 60 * 1000; // 5 days
           return amountMatch && dateMatch;
