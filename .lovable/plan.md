@@ -1,76 +1,49 @@
 ## Diagnóstico
 
-**Problema 1 — "Erro de conexão" ao abrir o aceite**
+Confirmei no banco o que está acontecendo:
 
-A página `/proposta/aceite/$token` chama a edge function `accept-devis-proposal` (GET para carregar a proposta, POST para aceitar/recusar). Essa função **não existe** no projeto:
+**Lançamento bancário** (tela Conciliação)
+- `Tarifa Renovação Cadastro` · 2022-08-25 · **−R$ 58,00** · `direction = NULL` · `conciliado`
 
-```
-supabase/functions/
-├── analyze-meeting-report
-├── generate-devis-proposal
-├── manage-users
-├── parse-bank-statement-pdf
-└── send-devis-proposal      ← só tem o envio, não tem o aceite
-```
+**Match existente** (`conciliation_matches`, status `confirmado`)
+- Aponta para o financial_entry **Bertrand Bonelli · R$ 3.000,00 entrada · 2026-04-30** ← pareamento errado (direção e valor diferentes).
 
-Por isso o `fetch` falha e cai no `catch` mostrando "Erro de conexão". Precisa criar a função.
+**Lançamento financeiro correto** (tela Movimentação Financeira)
+- `Talyson · Tarifa Renovação Cadastro · 2022-08-25 · −R$ 58,00 saída` · ainda **pendente** ← deveria ser este o par.
 
-**Problema 2 — E-mail enviado está sem a identidade visual antiga**
+### Causa raiz
 
-O template HTML atual em `send-devis-proposal/index.ts` é minimalista: só o texto com `white-space:pre-wrap` + um botão azul "Aceitar Proposta". Falta tudo o que aparece no modelo antigo (imagem 2):
-- Cabeçalho **LUNDGAARD JENSEN / ADVOCACIA & CONSULTORIA INTERNACIONAL** com linha dourada divisória
-- Texto guia "Você pode aceitar ou recusar a proposta clicando nos botões abaixo"
-- **Dois botões lado a lado**: "Aceitar Proposta" (verde) e "Recusar" (branco com borda vermelha)
-- Rodapé com endereço, telefones, site e Instagram
+1. Lançamentos importados de **PDF** não preenchem `direction` em `bank_statement_entries` (o `parse-bank-statement-pdf` retorna só amount com sinal; o insert em `conciliacao.tsx` linha 165 grava `direction: t.direction` que vem `undefined` do PDF).
+2. Sem `direction`, o `autoSuggest`/`suggestMatches` calcula `feAmount = amount_out` (fallback do ternário), não acha o Talyson e o usuário acaba parando no diálogo "Buscar" e pareando manualmente.
+3. O `conciliatePair` aceita qualquer par sem validar se valor/sinal batem — por isso o par errado (R$ 3.000 entrada ↔ R$ 58 saída) foi confirmado sem aviso, e o Talyson ficou para trás como pendente.
 
-## Correção
+## Correções propostas
 
-### 1. Criar `supabase/functions/accept-devis-proposal/index.ts`
+### 1. Corrigir o dado atual (migração de dados)
 
-Edge function pública (sem JWT) que:
+- Apagar o match errado (`a486a6e8-0a6f-47bf-aa1a-e916f5879c42`).
+- Reverter `financial_entries.Bertrand Bonelli` para `pendente`.
+- Criar match correto entre o bank entry `9cd61c76…` e o financial entry `Talyson 0e75dabb…` com `status = confirmado`, `match_type = manual`.
+- Marcar o financial entry do Talyson como `conciliado` (o bank entry já está).
+- Preencher `direction` em todos os `bank_statement_entries` onde está `NULL`, derivando de `amount` (negativo → `saida`, positivo → `entrada`) e normalizar `amount` para valor absoluto se necessário.
 
-- **GET `?token=...`** → busca a `devis` pelo `accept_token`, devolve preview JSON (`title`, `client_name`, `total_amount`, `down_payment_amount`, `deadline_date`, `scope_description`, `proposal_structure`, `accepted_at`, `rejected_at`). 404 se não achar.
-- **POST `?token=...`** → marca `accepted_at = now()`, `status = 'aceita'`, e devolve o mesmo preview atualizado. Idempotente (se já aceito, retorna estado atual sem alterar).
-- **POST `?token=...&action=reject`** com body `{ reason }` → marca `rejected_at = now()`, `status = 'recusada'`, salva motivo em `rejection_reason` (ou similar — confirmar no schema). Idempotente.
-- Headers CORS completos (incluindo `OPTIONS`).
-- Usa `SERVICE_ROLE_KEY` para bypass de RLS.
-- Adicionar `verify_jwt = false` em `supabase/config.toml` para esta função.
+### 2. Ajustar `src/routes/_authenticated/conciliacao.tsx`
 
-### 2. Refazer o HTML em `supabase/functions/send-devis-proposal/index.ts`
+- **Insert de bank entries (linha ~165):** quando `t.direction` vier vazio, derivar de `Math.sign(t.amount)`; gravar sempre `amount: Math.abs(t.amount)`.
+- **`autoSuggest` e `suggestMatches`:** se `stmt.direction` for nulo, usar `amount > 0 ? amount_in : amount_out` baseado no sinal do `stmt.amount`.
+- **`conciliatePair` (mutation de pareamento manual):** antes de confirmar, validar:
+  - Direção do bank (`saida`/`entrada`, derivada se NULL) bate com o lado do financial entry (`amount_out > 0` vs `amount_in > 0`).
+  - Diferença de valor < R$ 0,01.
+  - Se não bater, abrir `AlertDialog` de confirmação ("Valores ou direção divergem — confirmar mesmo assim?") em vez de salvar silenciosamente. Se confirmar, marcar `conciliation_matches.status = 'sugerido'` ou criar com flag de divergência (manter `confirmado` mas o usuário viu o aviso).
 
-Substituir o `htmlBody` por um template no molde da imagem 2:
+### 3. (Opcional, se desejar) Ajustar o parser do PDF
 
-```text
-┌──────────────────────────────────────┐
-│ LUNDGAARD JENSEN                     │
-│ ADVOCACIA & CONSULTORIA INTERNACIONAL│
-│ ────────────────────────  (dourado)  │
-│                                      │
-│ {mensagem em pre-wrap}               │
-│                                      │
-│ Você pode aceitar ou recusar a       │
-│ proposta clicando nos botões abaixo. │
-│                                      │
-│  [Aceitar Proposta]  [Recusar]       │
-│   verde sólido        borda vermelha │
-│                                      │
-│ ──────────────────────────────────── │
-│ Rua João Cordeiro, 831 — Iracema     │
-│ +55 (85) 9 9406-6042 | 9 3037-9931   │
-│ lundgaardjensen.com | @lundgaard...  │
-└──────────────────────────────────────┘
-```
+- Em `supabase/functions/parse-bank-statement-pdf/index.ts`, adicionar instrução ao prompt para que cada `transaction.amount` venha **com sinal** e expor `direction` derivada — assim o front recebe direction direto. Pode ser feito depois; o item 2 já cobre o sintoma.
 
-- O botão "Recusar" aponta para `${accept_url}?action=reject` (a página `/proposta/aceite/$token` já trata o estado de recusa via diálogo, mas o link direto também precisa funcionar — alternativa: ambos os botões vão para o mesmo `accept_url` e a página mostra os dois CTAs, igual já está hoje). **Recomendado**: manter os dois botões apontando para `accept_url` e deixar a página decidir, porque ela já tem fluxo completo de aceite + recusa com motivo.
-- Textos do cabeçalho/CTA traduzidos conforme `language` (pt/fr/en/es) recebido no payload (já é enviado pelo client).
-- Mantém o anexo PDF e o `update` para `enviada_ao_cliente` exatamente como hoje.
+## Resumo técnico
 
-### 3. Sem alterações no frontend
+- Migração de dados única para destravar o caso atual.
+- 3 pequenas mudanças no `conciliacao.tsx` (derivar direction, suggest com fallback, validação no pareamento manual).
+- Sem alteração de schema; sem alteração no Kanban/Devis.
 
-O `proposta.aceite.$token.tsx` já está correto — só precisa que a função exista.
-
-## Arquivos alterados
-
-- **Novo**: `supabase/functions/accept-devis-proposal/index.ts`
-- **Editado**: `supabase/functions/send-devis-proposal/index.ts` (apenas o `htmlBody`)
-- **Editado**: `supabase/config.toml` (adicionar bloco `[functions.accept-devis-proposal] verify_jwt = false`)
+Confirma que sigo com **(1) correção dos dados + (2) ajustes no front**? O item (3) do parser eu deixo de fora a menos que você peça.

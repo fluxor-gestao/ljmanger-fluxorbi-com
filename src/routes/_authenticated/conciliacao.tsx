@@ -162,11 +162,13 @@ function Conciliacao() {
     for (let i = 0; i < transactions.length; i++) {
       const t = transactions[i];
       try {
+        const rawAmount = Number(t.amount);
+        const derivedDirection = t.direction || (rawAmount < 0 ? "saida" : "entrada");
         const { error } = await supabase.from("bank_statement_entries").insert({
           transaction_date: t.date,
           description: t.description,
-          amount: t.amount,
-          direction: t.direction,
+          amount: Math.abs(rawAmount),
+          direction: derivedDirection,
           import_batch_id: batch.id,
           raw_payload: { source: ext, index: i, raw: (t as any).raw ?? null },
         });
@@ -197,10 +199,12 @@ function Conciliacao() {
       const pendingStatements = statements.filter((s) => s.conciliation_status === "pendente");
 
       for (const stmt of pendingStatements) {
+        const stmtDir = stmt.direction || (Number(stmt.amount) < 0 ? "saida" : "entrada");
+        const stmtAmt = Math.abs(Number(stmt.amount));
         // Find financial entries with same amount and close date
         const candidates = financialEntries.filter((fe) => {
-          const feAmount = stmt.direction === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
-          const amountMatch = Math.abs(feAmount - Number(stmt.amount)) < 0.01;
+          const feAmount = stmtDir === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
+          const amountMatch = Math.abs(feAmount - stmtAmt) < 0.01;
           const dateDiff = Math.abs(new Date(fe.entry_date).getTime() - new Date(stmt.transaction_date).getTime());
           const dateMatch = dateDiff < 5 * 24 * 60 * 60 * 1000; // 5 days
           return amountMatch && dateMatch;
@@ -388,9 +392,11 @@ function Conciliacao() {
 
   // In-memory automatic suggestion (does not persist)
   const autoSuggest = (stmt: any) => {
+    const stmtDir = stmt.direction || (Number(stmt.amount) < 0 ? "saida" : "entrada");
+    const stmtAmt = Math.abs(Number(stmt.amount));
     const candidates = financialEntries.filter((fe) => {
-      const feAmount = stmt.direction === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
-      const amountMatch = Math.abs(feAmount - Number(stmt.amount)) < 0.01;
+      const feAmount = stmtDir === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
+      const amountMatch = Math.abs(feAmount - stmtAmt) < 0.01;
       const dateDiff = Math.abs(new Date(fe.entry_date).getTime() - new Date(stmt.transaction_date).getTime());
       const dateMatch = dateDiff < 5 * 24 * 60 * 60 * 1000;
       return amountMatch && dateMatch;
@@ -401,6 +407,23 @@ function Conciliacao() {
   // Pair conciliation: create or update match + flip statuses
   const conciliatePair = useMutation({
     mutationFn: async ({ stmt, fe, existingMatchId }: { stmt: any; fe: any; existingMatchId?: string }) => {
+      const stmtDir = stmt.direction || (Number(stmt.amount) < 0 ? "saida" : "entrada");
+      const stmtAmt = Math.abs(Number(stmt.amount));
+      const feAmount = stmtDir === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
+      const feHasOpposite = stmtDir === "entrada" ? Number(fe.amount_out) > 0 : Number(fe.amount_in) > 0;
+      const amountDiff = Math.abs(feAmount - stmtAmt);
+      if (feHasOpposite || feAmount === 0 || amountDiff >= 0.01) {
+        const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+        const sideLabel = stmtDir === "entrada" ? "entrada" : "saída";
+        const feSide = Number(fe.amount_in) > 0 ? "entrada" : "saída";
+        const ok = window.confirm(
+          `Divergência detectada:\n\n` +
+            `• Banco: ${sideLabel} de ${fmt(stmtAmt)}\n` +
+            `• Lançamento interno: ${feSide} de ${fmt(Number(fe.amount_in) || Number(fe.amount_out))}\n\n` +
+            `Conciliar mesmo assim?`,
+        );
+        if (!ok) throw new Error("Conciliação cancelada por divergência.");
+      }
       let matchId = existingMatchId;
       if (!matchId) {
         const { data, error } = await supabase
