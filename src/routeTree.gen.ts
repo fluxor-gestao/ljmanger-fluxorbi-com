@@ -29,6 +29,7 @@ import { Route as ApiPublicBiFinanceiroRouteImport } from './routes/api/public/b
 import { Route as ApiPublicBiComercialRouteImport } from './routes/api/public/bi-comercial'
 import { Route as ApiPublicSplatRouteImport } from './routes/api/public/$'
 import { Route as AuthenticatedAdminApiKeysRouteImport } from './routes/_authenticated/admin_.api-keys'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as AuthenticatedComercialDevisIdRouteImport } from './routes/_authenticated/comercial_.devis.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -134,6 +135,12 @@ const AuthenticatedAdminApiKeysRoute =
     path: '/admin/api-keys',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedComercialDevisIdRoute =
   AuthenticatedComercialDevisIdRouteImport.update({
     id: '/comercial_/devis/$id',
@@ -162,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/api/public/bi-operacao': typeof ApiPublicBiOperacaoRoute
   '/proposta/aceite/$token': typeof PropostaAceiteTokenRoute
   '/comercial/devis/$id': typeof AuthenticatedComercialDevisIdRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -184,6 +192,7 @@ export interface FileRoutesByTo {
   '/api/public/bi-operacao': typeof ApiPublicBiOperacaoRoute
   '/proposta/aceite/$token': typeof PropostaAceiteTokenRoute
   '/comercial/devis/$id': typeof AuthenticatedComercialDevisIdRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -208,6 +217,7 @@ export interface FileRoutesById {
   '/api/public/bi-operacao': typeof ApiPublicBiOperacaoRoute
   '/proposta/aceite/$token': typeof PropostaAceiteTokenRoute
   '/_authenticated/comercial_/devis/$id': typeof AuthenticatedComercialDevisIdRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/api/public/bi-operacao'
     | '/proposta/aceite/$token'
     | '/comercial/devis/$id'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/api/public/bi-operacao'
     | '/proposta/aceite/$token'
     | '/comercial/devis/$id'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/'
@@ -277,6 +289,7 @@ export interface FileRouteTypes {
     | '/api/public/bi-operacao'
     | '/proposta/aceite/$token'
     | '/_authenticated/comercial_/devis/$id'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -291,6 +304,7 @@ export interface RootRouteChildren {
   ApiPublicBiKpisOperacaoRoute: typeof ApiPublicBiKpisOperacaoRoute
   ApiPublicBiOperacaoRoute: typeof ApiPublicBiOperacaoRoute
   PropostaAceiteTokenRoute: typeof PropostaAceiteTokenRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -435,6 +449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminApiKeysRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/comercial_/devis/$id': {
       id: '/_authenticated/comercial_/devis/$id'
       path: '/comercial/devis/$id'
@@ -487,7 +508,18 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBiKpisOperacaoRoute: ApiPublicBiKpisOperacaoRoute,
   ApiPublicBiOperacaoRoute: ApiPublicBiOperacaoRoute,
   PropostaAceiteTokenRoute: PropostaAceiteTokenRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
