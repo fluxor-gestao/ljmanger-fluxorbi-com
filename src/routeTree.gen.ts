@@ -9,9 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthenticatedOperacaoRouteImport } from './routes/_authenticated/operacao'
 import { Route as AuthenticatedHubRouteImport } from './routes/_authenticated/hub'
 import { Route as AuthenticatedGestaoRouteImport } from './routes/_authenticated/gestao'
@@ -21,6 +23,7 @@ import { Route as AuthenticatedComercialRouteImport } from './routes/_authentica
 import { Route as AuthenticatedBiRouteImport } from './routes/_authenticated/bi'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as PropostaAceiteTokenRouteImport } from './routes/proposta.aceite.$token'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicBiOperacaoRouteImport } from './routes/api/public/bi-operacao'
 import { Route as ApiPublicBiKpisOperacaoRouteImport } from './routes/api/public/bi-kpis-operacao'
 import { Route as ApiPublicBiKpisFinanceiroRouteImport } from './routes/api/public/bi-kpis-financeiro'
@@ -29,9 +32,16 @@ import { Route as ApiPublicBiFinanceiroRouteImport } from './routes/api/public/b
 import { Route as ApiPublicBiComercialRouteImport } from './routes/api/public/bi-comercial'
 import { Route as ApiPublicSplatRouteImport } from './routes/api/public/$'
 import { Route as AuthenticatedAdminApiKeysRouteImport } from './routes/_authenticated/admin_.api-keys'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as AuthenticatedComercialDevisIdRouteImport } from './routes/_authenticated/comercial_.devis.$id'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -44,6 +54,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedOperacaoRoute = AuthenticatedOperacaoRouteImport.update({
@@ -92,6 +107,11 @@ const PropostaAceiteTokenRoute = PropostaAceiteTokenRouteImport.update({
   path: '/proposta/aceite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBiOperacaoRoute = ApiPublicBiOperacaoRouteImport.update({
   id: '/api/public/bi-operacao',
   path: '/api/public/bi-operacao',
@@ -135,6 +155,18 @@ const AuthenticatedAdminApiKeysRoute =
     path: '/admin/api-keys',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -151,6 +183,7 @@ const AuthenticatedComercialDevisIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/bi': typeof AuthenticatedBiRoute
   '/comercial': typeof AuthenticatedComercialRoute
@@ -159,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/gestao': typeof AuthenticatedGestaoRoute
   '/hub': typeof AuthenticatedHubRoute
   '/operacao': typeof AuthenticatedOperacaoRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
@@ -167,13 +201,17 @@ export interface FileRoutesByFullPath {
   '/api/public/bi-kpis-financeiro': typeof ApiPublicBiKpisFinanceiroRoute
   '/api/public/bi-kpis-operacao': typeof ApiPublicBiKpisOperacaoRoute
   '/api/public/bi-operacao': typeof ApiPublicBiOperacaoRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/proposta/aceite/$token': typeof PropostaAceiteTokenRoute
   '/comercial/devis/$id': typeof AuthenticatedComercialDevisIdRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/bi': typeof AuthenticatedBiRoute
   '/comercial': typeof AuthenticatedComercialRoute
@@ -182,6 +220,7 @@ export interface FileRoutesByTo {
   '/gestao': typeof AuthenticatedGestaoRoute
   '/hub': typeof AuthenticatedHubRoute
   '/operacao': typeof AuthenticatedOperacaoRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
@@ -190,15 +229,19 @@ export interface FileRoutesByTo {
   '/api/public/bi-kpis-financeiro': typeof ApiPublicBiKpisFinanceiroRoute
   '/api/public/bi-kpis-operacao': typeof ApiPublicBiKpisOperacaoRoute
   '/api/public/bi-operacao': typeof ApiPublicBiOperacaoRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/proposta/aceite/$token': typeof PropostaAceiteTokenRoute
   '/comercial/devis/$id': typeof AuthenticatedComercialDevisIdRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/bi': typeof AuthenticatedBiRoute
   '/_authenticated/comercial': typeof AuthenticatedComercialRoute
@@ -207,6 +250,7 @@ export interface FileRoutesById {
   '/_authenticated/gestao': typeof AuthenticatedGestaoRoute
   '/_authenticated/hub': typeof AuthenticatedHubRoute
   '/_authenticated/operacao': typeof AuthenticatedOperacaoRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/admin_/api-keys': typeof AuthenticatedAdminApiKeysRoute
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
@@ -215,15 +259,19 @@ export interface FileRoutesById {
   '/api/public/bi-kpis-financeiro': typeof ApiPublicBiKpisFinanceiroRoute
   '/api/public/bi-kpis-operacao': typeof ApiPublicBiKpisOperacaoRoute
   '/api/public/bi-operacao': typeof ApiPublicBiOperacaoRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/proposta/aceite/$token': typeof PropostaAceiteTokenRoute
   '/_authenticated/comercial_/devis/$id': typeof AuthenticatedComercialDevisIdRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/unsubscribe'
     | '/admin'
     | '/bi'
     | '/comercial'
@@ -232,6 +280,7 @@ export interface FileRouteTypes {
     | '/gestao'
     | '/hub'
     | '/operacao'
+    | '/email/unsubscribe'
     | '/admin/api-keys'
     | '/api/public/$'
     | '/api/public/bi-comercial'
@@ -240,13 +289,17 @@ export interface FileRouteTypes {
     | '/api/public/bi-kpis-financeiro'
     | '/api/public/bi-kpis-operacao'
     | '/api/public/bi-operacao'
+    | '/lovable/email/suppression'
     | '/proposta/aceite/$token'
     | '/comercial/devis/$id'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/unsubscribe'
     | '/admin'
     | '/bi'
     | '/comercial'
@@ -255,6 +308,7 @@ export interface FileRouteTypes {
     | '/gestao'
     | '/hub'
     | '/operacao'
+    | '/email/unsubscribe'
     | '/admin/api-keys'
     | '/api/public/$'
     | '/api/public/bi-comercial'
@@ -263,14 +317,18 @@ export interface FileRouteTypes {
     | '/api/public/bi-kpis-financeiro'
     | '/api/public/bi-kpis-operacao'
     | '/api/public/bi-operacao'
+    | '/lovable/email/suppression'
     | '/proposta/aceite/$token'
     | '/comercial/devis/$id'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/unsubscribe'
     | '/_authenticated/admin'
     | '/_authenticated/bi'
     | '/_authenticated/comercial'
@@ -279,6 +337,7 @@ export interface FileRouteTypes {
     | '/_authenticated/gestao'
     | '/_authenticated/hub'
     | '/_authenticated/operacao'
+    | '/email/unsubscribe'
     | '/_authenticated/admin_/api-keys'
     | '/api/public/$'
     | '/api/public/bi-comercial'
@@ -287,15 +346,20 @@ export interface FileRouteTypes {
     | '/api/public/bi-kpis-financeiro'
     | '/api/public/bi-kpis-operacao'
     | '/api/public/bi-operacao'
+    | '/lovable/email/suppression'
     | '/proposta/aceite/$token'
     | '/_authenticated/comercial_/devis/$id'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
+  EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ApiPublicSplatRoute: typeof ApiPublicSplatRoute
   ApiPublicBiComercialRoute: typeof ApiPublicBiComercialRoute
   ApiPublicBiFinanceiroRoute: typeof ApiPublicBiFinanceiroRoute
@@ -303,12 +367,22 @@ export interface RootRouteChildren {
   ApiPublicBiKpisFinanceiroRoute: typeof ApiPublicBiKpisFinanceiroRoute
   ApiPublicBiKpisOperacaoRoute: typeof ApiPublicBiKpisOperacaoRoute
   ApiPublicBiOperacaoRoute: typeof ApiPublicBiOperacaoRoute
+  LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   PropostaAceiteTokenRoute: typeof PropostaAceiteTokenRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
+  LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -328,6 +402,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/operacao': {
@@ -393,6 +474,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropostaAceiteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/bi-operacao': {
       id: '/api/public/bi-operacao'
       path: '/api/public/bi-operacao'
@@ -449,6 +537,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminApiKeysRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
       path: '/lovable/email/queue/process'
@@ -500,6 +602,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
+  EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ApiPublicSplatRoute: ApiPublicSplatRoute,
   ApiPublicBiComercialRoute: ApiPublicBiComercialRoute,
   ApiPublicBiFinanceiroRoute: ApiPublicBiFinanceiroRoute,
@@ -507,8 +611,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBiKpisFinanceiroRoute: ApiPublicBiKpisFinanceiroRoute,
   ApiPublicBiKpisOperacaoRoute: ApiPublicBiKpisOperacaoRoute,
   ApiPublicBiOperacaoRoute: ApiPublicBiOperacaoRoute,
+  LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   PropostaAceiteTokenRoute: PropostaAceiteTokenRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
+  LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Send, AlertTriangle } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import DevisPdfTemplate from "./DevisPdfTemplate";
@@ -91,22 +91,55 @@ export default function SendDevisDialog({ open, onOpenChange, devis, client }: P
       const filename = `Devis-${devisNumber}-${safeName}.pdf`;
       const { base64 } = await generateDevisPdfBase64(host, filename);
 
-      const { data, error } = await supabase.functions.invoke("send-devis-proposal", {
-        body: {
-          devis_id: devis.id,
-          to: recipients,
-          subject,
-          message_text: message,
-          pdf_base64: base64,
-          pdf_filename: filename,
-          accept_url: acceptUrl,
-          client_name: client?.name || "Cliente",
-          devis_number: devisNumber,
-          language,
-        },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      // Upload PDF to Supabase Storage and create a signed URL (30 days)
+      const pdfBytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      const objectPath = `${devis.id}/${Date.now()}-${filename}`;
+      const { error: upErr } = await supabase.storage
+        .from("devis-pdfs")
+        .upload(objectPath, pdfBytes, { contentType: "application/pdf", upsert: true });
+      if (upErr) throw upErr;
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("devis-pdfs")
+        .createSignedUrl(objectPath, 60 * 60 * 24 * 30);
+      if (signErr) throw signErr;
+      const pdfUrl = signed.signedUrl;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const idempotencyKey = `devis-${devis.id}-${Date.now()}`;
+
+      // Send to each recipient (one transactional email per recipient)
+      for (const recipient of recipients) {
+        const res = await fetch("/lovable/email/transactional/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token ?? ""}`,
+          },
+          body: JSON.stringify({
+            templateName: "devis-proposal",
+            recipientEmail: recipient,
+            idempotencyKey: `${idempotencyKey}-${recipient}`,
+            templateData: {
+              messageText: message,
+              acceptUrl,
+              pdfUrl,
+              language,
+              devisNumber,
+              subject,
+            },
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `Falha ao enviar para ${recipient}`);
+        }
+      }
+
+      // Update devis status
+      await supabase
+        .from("devis")
+        .update({ status: "enviada_ao_cliente", sent_at: new Date().toISOString() })
+        .eq("id", devis.id);
 
       toast.success("Proposta enviada ao cliente!");
       queryClient.invalidateQueries({ queryKey: ["devis"] });
@@ -127,14 +160,6 @@ export default function SendDevisDialog({ open, onOpenChange, devis, client }: P
         <DialogHeader>
           <DialogTitle>Enviar proposta ao cliente</DialogTitle>
         </DialogHeader>
-
-        <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 flex gap-2 text-xs">
-          <AlertTriangle className="h-4 w-4 text-yellow-600 shrink-0 mt-0.5" />
-          <div>
-            <strong>Modo de teste do Resend:</strong> só é possível enviar para o e-mail cadastrado na sua conta Resend.
-            Para enviar a clientes reais, verifique um domínio em <code>resend.com/domains</code>.
-          </div>
-        </div>
 
         <div className="space-y-3">
           <div>
