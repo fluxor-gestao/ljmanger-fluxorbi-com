@@ -860,6 +860,10 @@ export type Database = {
         Args: { _from?: string; _to?: string }
         Returns: Json
       }
+      create_devis_initial_charge: {
+        Args: { _devis_id: string }
+        Returns: undefined
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
