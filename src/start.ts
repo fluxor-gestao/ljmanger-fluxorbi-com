@@ -7,8 +7,8 @@ import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   // Bypass error wrapping for internal email routes — they handle their own auth/responses.
   const req = getRequest();
-  const url = req ? new URL(req.url) : null;
-  if (url.pathname.startsWith("/lovable/") || url.pathname === "/email/unsubscribe") {
+  const pathname = req ? new URL(req.url).pathname : "";
+  if (pathname.startsWith("/lovable/") || pathname === "/email/unsubscribe") {
     return next();
   }
   try {
