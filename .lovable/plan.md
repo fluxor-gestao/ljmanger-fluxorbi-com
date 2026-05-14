@@ -1,91 +1,84 @@
-## Objetivo
+## Problemas identificados
 
-Evoluir operacionalmente as duas telas existentes do módulo financeiro (Movimentação e Conciliação), preservando 100% da identidade visual atual (sidebar, paleta, cards gradientes, tipografia, componentes shadcn). Nada será reconstruído — apenas adicionadas tabs, colunas, agrupamentos, filtros e um rodapé fixo, além de melhorias de densidade e contexto na conciliação.
+1. **Devis "Rascunho" some do Kanban** — `rascunho` está em `LEGACY_STATUSES`, não em `PIPELINE_STATUSES`, então o card não é renderizado em coluna nenhuma. Hoje o upload de ata cria devis com `status: "rascunho"` (em `comercial.tsx` linha 64/299) e a coluna `reuniao_realizada`/`proposta_em_geracao` ficam vazias.
+2. **Sem progressão automática** por preenchimento das 5 validações.
+3. **Colunas do Kanban grandes demais** — sem limite de altura, sem scroll interno.
+4. **Numeração `DE202605003` engessada** — `generate_devis_number()` usa prefixo fixo `DE`, sem oferecer escolha entre `DE` (Advocacia), `AM` (Ambiental) ou `CO` (Contábil), e gera o número silenciosamente no INSERT.
+5. **`entrada_recebida` e `enviado_para_operacao`** — colunas derivadas dependem de `financial_entries` (cobrança 50%) e `services` vinculados ao devis. Trigger `trg_devis_accepted_charge` cria a cobrança automaticamente no aceite (OK). Já a criação de `services` ao aceitar **não existe** — o vínculo com Operação está "desligado".
 
-## Tela 1 — Movimentação Financeira (`/financeiro`)
+## Solução
 
-**1. Cards superiores (substituir o conteúdo, manter o estilo atual)**
-- Saldo Inicial · Total Receitas · Total Despesas · Transferências Internas · Saldo Final · Disponível Total Atual
-- Reaproveita os mesmos `Card` + ícones já usados; só muda o cálculo e os labels.
+### 1. Pipeline de status (mapping correto)
 
-**2. Tabs internas** (componente `Tabs` shadcn, abaixo dos cards):
-- **Consolidado** — previsto + realizado (visão padrão, igual à atual)
-- **Previsões** — `source_type='manual'` originadas do comercial (`document_reference` referencia devis) e `conciliation_status='pendente'`
-- **Realizados** — `conciliation_status='conciliado'`
-- **Fluxo Bancário** — agrupado por `bank_account_id` → render por banco com subtotais (receitas, despesas, saldo); usa um único componente de seção colapsável, não múltiplas tabelas
-- **Receitas x Despesas** — visão analítica simples (tabela pivotada por competência ou cards de totais por categoria)
+Reescrever a transição de status do devis para refletir a realidade operacional:
 
-**3. Filtros (linha acima da tabela, expandir os atuais)**
-- Competência (mês/ano) · Banco/Conta (`Select` populado de `bank_accounts`) · Tipo (receita/despesa/transferência) · Negócio · Conta Movimentação · Status · Origem (comercial/manual/ofx) · Previsto/Realizado
+- **Upload de ata concluído** → cria devis com `status = 'reuniao_realizada'` (não mais `rascunho`).
+- **Geração da proposta IA salva** (campos `proposal_structure`/`scope_description` preenchidos) → status passa para `proposta_em_geracao`.
+- **Primeira validação marcada** (qualquer um dos 5 checkboxes) → status passa para `aguardando_validacao`.
+- **Todas as 5 validações marcadas** (`validated_at` setado) → status passa para `pronta_para_envio`.
+- **`enviada_ao_cliente` / `aguardando_aceite` / `aceita` / `rejeitada`** → mantém comportamento atual.
 
-**4. Tabela financeira (mesma `Table`, mais densa)**
-- Linhas mais compactas (`py-1.5` no `TableCell`), zebra suave (`even:bg-muted/30`), cabeçalho com peso maior, badges coloridas, valores com `tabular-nums font-medium`
-- Novas colunas: **Banco/Conta**, **Tipo**, **Origem**, **Previsto/Realizado**, **Conciliado** (✓/–)
-- Coluna "Origem" derivada de `source_type` + presença de `document_reference`
+Implementação: trigger `trg_devis_status_progression` em `BEFORE UPDATE OR INSERT` na tabela `devis` que recalcula o `status` sempre que ainda não tiver passado de `pronta_para_envio` (não sobrescreve estados pós-envio). Mais robusto que controlar só no client.
 
-**5. Agrupamento por banco (na aba Fluxo Bancário)**
-- Componente `BankGroup` que renderiza header do banco + linhas + linha de subtotal (receitas / despesas / saldo)
-- Sem múltiplas tabelas independentes — uma única `Table` com `TableRow` de header de grupo entre blocos
+Ajuste em `comercial.tsx` (`createDevis` e `handleAtaConfirm`) e `emptyDevis` para default `reuniao_realizada` em vez de `rascunho`.
 
-**6. Transferências Internas**
-- Adicionar `entry_type='transferencia'` ao enum (migration) e badge azul própria
-- Não somam em receita/despesa nos cards
-- Campo opcional `transfer_pair_id` para vincular origem ↔ destino
+### 2. Vínculo com Operação (religar `enviado_para_operacao`)
 
-**7. Rodapé fixo**
-- Barra inferior sticky dentro do `<main>`: Total Entradas · Total Saídas · Total Transferências · Saldo Final
-- Usa `bg-card border-t` para combinar com o header atual
+Adicionar trigger `trg_devis_accepted_create_service` espelhando o de cobrança: quando `accepted_at` for setado e ainda não existir `service` vinculado ao devis, criar registro em `public.services` com:
+- `devis_id`, `client_id`, `business_unit`, `responsible_sector` herdados do devis
+- `title` = título do devis
+- `status = 'a_iniciar'`
+- `expected_end_date = devis.deadline_date`
 
-## Tela 2 — Conciliação Bancária (`/conciliacao`)
+Isso reativa a coluna `enviado_para_operacao` no Kanban (lógica em `DevisKanban` já existe via `svcByDevis`).
 
-Mantém o layout atual (extrato à esquerda, lançamentos à direita, ações no centro). Apenas evolui o contexto e a densidade.
+`entrada_recebida` continua derivada de `financial_entries.conciliation_status = 'conciliado'` (sem mudança) — já funciona quando a conciliação bancária baixa a cobrança.
 
-**1. Barra de contexto financeiro no topo**
-- Seletor de Banco + Conta + Competência
-- Cards compactos: Saldo Banco · Saldo Sistema · Diferença · Pendências · Conciliados
+### 3. Scroll nas colunas do Kanban
 
-**2. Visual mais "extrato bancário"**
-- Linhas mais compactas, fonte tabular nos valores, divisores sutis
-- Coluna de data em formato `dd/MM`, descrição truncada com tooltip, valor alinhado à direita com cor por sinal
+Em `src/components/devis/DevisKanban.tsx`, no componente `Column`:
+- Card da coluna recebe `max-h-[calc(3*7rem+2rem)]` (≈ 3 cards visíveis, considerando ~108px por card + gaps + header)
+- Container interno dos itens ganha `overflow-y-auto` com scrollbar custom (classe `scrollbar-thin` do Tailwind)
+- Header e badge de contagem ficam fixos acima do scroll
 
-**3. Sugestões automáticas com score**
-- Badges: **Match Exato** (verde, 100%) · **Match Provável** (amarelo, 60–99%) · **Sem Sugestão** (cinza)
-- Critérios combinados: igualdade de valor (peso alto), proximidade de data (±3 dias), similaridade de descrição (Levenshtein simples client-side), banco correspondente
-- Percentual exibido na badge
+### 4. Diálogo de pré-geração com código sequencial
 
-**4. Ações rápidas (toolbar por linha)**
-- Conciliar · Desfazer · Ignorar · Buscar lançamento (abre dialog de busca) · Novo lançamento · Marcar como Transferência Interna
+Novo componente `src/components/devis/DevisCodePreviewDialog.tsx`:
+- Abre **antes** de gerar o rascunho (entre o upload de ata e o `createDevis.mutate`)
+- Mostra:
+  - Cliente identificado
+  - **Tipo de serviço** com 3 opções (radio/select): Advocacia (DE), Ambiental (AM), Contábil (CO) — pré-selecionado pela heurística (analisando `service_type`/`responsible_sector` da IA, ou palavras-chave em `meeting_report`)
+  - **Código previsto**: `{PREFIXO}{YYYY}{MM}{SEQ3}` calculado no momento, fazendo `SELECT MAX(...)` por prefixo+ano+mês
+  - Botões "Confirmar e gerar rascunho" / "Cancelar"
 
-## Mudanças de schema (migration)
+Database:
+- Generalizar `generate_devis_number()` para usar prefixo dinâmico baseado no `service_type` do devis: `DE` / `AM` / `CO` (default `DE` se ausente). O número só é gerado se `devis_number` ainda estiver nulo, então o cliente pode passar o `devis_number` pré-calculado e a função respeita.
+- Helper RPC `public.next_devis_number(_prefix text)` para o diálogo consultar o próximo sequencial sem race-condition (locks via `pg_advisory_xact_lock`).
 
-- `financial_entries`: adicionar valor `'transferencia'` ao enum `entry_type` e coluna `transfer_pair_id uuid` (nullable, self-reference lógica)
-- `financial_entries`: adicionar coluna `realized boolean default false` para distinguir previsto/realizado de forma explícita (atualizada pelo trigger de conciliação)
-- Sem mudanças em RLS (políticas atuais já cobrem)
+### 5. Validação imediata visual
 
-## Arquivos a editar / criar
+Em `comercial_.devis.$id.tsx`, ao salvar o checklist, invalidar a query do Kanban (já feita via realtime, mas garantir invalidate explícito).
 
-- `src/routes/_authenticated/financeiro.tsx` — adicionar tabs, novos cards, filtros, colunas, rodapé
-- `src/routes/_authenticated/conciliacao.tsx` — barra de contexto, score nas sugestões, ações rápidas
-- `src/components/financeiro/SummaryCards.tsx` — extrair os 6 cards
-- `src/components/financeiro/BankGroup.tsx` — render agrupado por banco
-- `src/components/financeiro/EntriesTable.tsx` — tabela compacta reutilizável (Consolidado / Previsões / Realizados)
-- `src/components/financeiro/FinanceFooter.tsx` — rodapé fixo com totais
-- `src/components/financeiro/FilterBar.tsx` — barra de filtros
-- `src/components/conciliacao/ContextHeader.tsx` — banco/conta/competência + cards de saldo
-- `src/components/conciliacao/MatchBadge.tsx` — badge de score
-- `src/lib/matchScore.ts` — função de scoring client-side
-- migration SQL para enum + colunas
+## Arquivos afetados
 
-## Identidade visual preservada
+**Migration SQL** (uma só):
+- Trigger `trg_devis_status_progression` (BEFORE INSERT/UPDATE)
+- Trigger `trg_devis_accepted_create_service` (AFTER UPDATE)
+- Função `next_devis_number(prefix text)` com advisory lock
+- Atualizar `generate_devis_number()` para prefixo dinâmico via `service_type`
+- Backfill: `UPDATE devis SET status = 'reuniao_realizada' WHERE status = 'rascunho'`
 
-- Continua usando `Card`, `Table`, `Badge`, `Tabs`, `Select`, `Input` do shadcn já presentes
-- Cores via tokens `--primary`, `--success`, `--warning`, `--destructive`, `--accent` (sem cores hardcoded)
-- Mesmos ícones lucide, mesmas fontes (Inter / Space Grotesk)
-- Mesmo padrão de gradiente (`from-primary to-accent`) usado no card "Conciliação"
+**Frontend**:
+- `src/components/devis/DevisKanban.tsx` — limite de altura + scroll na `Column`
+- `src/components/devis/DevisCodePreviewDialog.tsx` — **novo**
+- `src/components/devis/UploadAtaDialog.tsx` — ao confirmar, abrir o `DevisCodePreviewDialog` antes de chamar `onConfirm`
+- `src/routes/_authenticated/comercial.tsx` — `emptyDevis.status = 'reuniao_realizada'`, integrar diálogo de código no fluxo de criação, passar `service_type` + `devis_number` no INSERT
+- `src/lib/devisStatus.ts` — adicionar helper `inferServicePrefix(text): 'DE'|'AM'|'CO'`
 
-## Fora de escopo (não será feito agora)
+## Preservação visual
 
-- Reconstruir o módulo
-- Trocar paleta, tipografia ou layout da sidebar
-- Novas integrações externas (open banking, etc.)
-- Relatórios/BI adicionais — o existente em `/bi` continua o mesmo
+Sem mudanças de paleta, tipografia ou estrutura de layout. Apenas:
+- Coluna do Kanban com altura fixa + scroll suave
+- Novo diálogo seguindo o padrão `Dialog` shadcn já usado em `UploadAtaDialog`/`SendDevisDialog`
+
+Pronto para implementar?

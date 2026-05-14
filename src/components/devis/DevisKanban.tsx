@@ -207,11 +207,11 @@ function Column({
     <div className="flex-shrink-0 w-72">
       <Card
         className={cn(
-          "border-t-4 p-3 h-full flex flex-col",
+          "border-t-4 p-3 flex flex-col",
           STATUS_COLUMN_ACCENT[status] ?? "border-t-border",
         )}
       >
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 shrink-0">
           <div className="font-semibold text-sm">{STATUS_LABELS[status]}</div>
           <Badge variant="outline" className={cn("text-xs", STATUS_BADGE_CLASSES[status])}>
             {items.length}
@@ -220,7 +220,9 @@ function Column({
         <div
           ref={setNodeRef}
           className={cn(
-            "space-y-2 min-h-[200px] flex-1 rounded-md p-1 transition-colors",
+            "space-y-2 rounded-md p-1 transition-colors overflow-y-auto pr-1",
+            "max-h-[420px] min-h-[120px]",
+            "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full",
             isOver && !isDerivedColumn && "bg-accent/50",
           )}
         >

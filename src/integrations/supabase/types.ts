@@ -891,6 +891,7 @@ export type Database = {
         }
         Returns: number
       }
+      next_devis_number: { Args: { _prefix: string }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

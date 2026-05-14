@@ -25,6 +25,7 @@ import DevisKanban from "@/components/devis/DevisKanban";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import AISuggestionsBlock, { type AISuggestions } from "@/components/devis/AISuggestionsBlock";
 import UploadAtaDialog, { type ConfirmedAtaResult } from "@/components/devis/UploadAtaDialog";
+import DevisCodePreviewDialog, { inferServicePrefix, type ServicePrefix } from "@/components/devis/DevisCodePreviewDialog";
 import { CurrencyInputBRL } from "@/components/ui/currency-input-brl";
 
 const fmtBRL = (n: number) =>
@@ -53,6 +54,8 @@ type DevisForm = {
   down_payment_amount: string;
   notes: string;
   title: string;
+  devis_number: string;
+  service_type: string;
 };
 
 const emptyDevis: DevisForm = {
@@ -61,11 +64,13 @@ const emptyDevis: DevisForm = {
   commercial_responsible: "",
   meeting_summary: "",
   meeting_report: "",
-  status: "rascunho",
+  status: "reuniao_realizada",
   total_amount: "",
   down_payment_amount: "",
   notes: "",
   title: "",
+  devis_number: "",
+  service_type: "",
 };
 
 function Comercial() {
@@ -246,7 +251,8 @@ function Comercial() {
         notes: form.notes || null,
         title,
         created_by: user?.id,
-        service_type: aiAccepted.service_type || null,
+        devis_number: form.devis_number || null,
+        service_type: form.service_type || aiAccepted.service_type || null,
         responsible_sector: aiAccepted.responsible_sector || null,
         scope_description: aiAccepted.scope_description || null,
         proposal_structure: aiAccepted.proposal_structure || null,
@@ -286,8 +292,19 @@ function Comercial() {
     }
   };
 
-  const handleAtaConfirm = ({ client_id, payload }: ConfirmedAtaResult) => {
+  // Pending payload entre o upload de ata e o diálogo de código
+  const [pendingAta, setPendingAta] = useState<ConfirmedAtaResult | null>(null);
+  const [codePreviewOpen, setCodePreviewOpen] = useState(false);
+
+  const handleAtaConfirm = (result: ConfirmedAtaResult) => {
     queryClient.invalidateQueries({ queryKey: ["clients"] });
+    setPendingAta(result);
+    setCodePreviewOpen(true);
+  };
+
+  const handleCodeConfirmed = ({ devis_number, service_type }: { prefix: ServicePrefix; devis_number: string; service_type: string }) => {
+    if (!pendingAta) return;
+    const { client_id, payload } = pendingAta;
     const total = payload.devis.total_amount || 0;
     const meetingDate = payload.meeting.date ? new Date(payload.meeting.date + "T00:00:00") : undefined;
     setDevisForm({
@@ -296,21 +313,25 @@ function Comercial() {
       commercial_responsible: user?.id || "",
       meeting_summary: payload.meeting.summary || "",
       meeting_report: payload.meeting.report || "",
-      status: "rascunho",
+      status: "reuniao_realizada",
       total_amount: total ? String(total) : "",
       down_payment_amount: total ? String((total * 0.5).toFixed(2)) : "",
       notes: "",
       title: payload.devis.title || "",
+      devis_number,
+      service_type,
     });
     setAiAccepted({
-      service_type: payload.devis.service_type || "",
+      service_type: payload.devis.service_type || service_type,
       responsible_sector: payload.devis.responsible_sector || "",
       scope_description: payload.devis.scope_description || "",
       proposal_structure: payload.devis.proposal_structure || "",
     });
     setAiSuggestions(null);
+    setCodePreviewOpen(false);
+    setPendingAta(null);
     setDevisDialogOpen(true);
-    toast.success("Devis pré-preenchido. Revise e salve.");
+    toast.success(`Devis ${devis_number} pré-preenchido. Revise e salve.`);
   };
 
   const openEditClient = (c: any) => {
@@ -579,6 +600,23 @@ function Comercial() {
             onOpenChange={setUploadAtaOpen}
             clients={clients}
             onConfirm={handleAtaConfirm}
+          />
+
+          <DevisCodePreviewDialog
+            open={codePreviewOpen}
+            onOpenChange={(o) => {
+              setCodePreviewOpen(o);
+              if (!o) setPendingAta(null);
+            }}
+            clientName={pendingAta ? clientsById[pendingAta.client_id]?.name : undefined}
+            initialPrefix={inferServicePrefix(
+              pendingAta?.payload.devis.service_type,
+              pendingAta?.payload.devis.responsible_sector,
+              pendingAta?.payload.devis.scope_description,
+              pendingAta?.payload.meeting.report,
+            )}
+            serviceTypeHint={pendingAta?.payload.devis.service_type}
+            onConfirm={handleCodeConfirmed}
           />
 
           {view === "kanban" ? (
