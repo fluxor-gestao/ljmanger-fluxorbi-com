@@ -1,115 +1,24 @@
-# Central de Ajuda — Escopo inicial (itens 1 a 4)
+# Corrigir card Comercial da Central de Ajuda
 
-Vamos entregar a base da Central de Ajuda já com o módulo Comercial completo. Os demais módulos ficam como placeholder ("em construção") e a gente preenche conforme cada um amadurece.
+## Causa
+No roteamento por arquivos do TanStack Router, `src/routes/_authenticated/ajuda.tsx` é tratado como **layout pai** das rotas `ajuda.*.tsx` (filhos). Como esse arquivo renderiza o conteúdo do índice direto, sem `<Outlet />`, quando o usuário clica no card e navega para `/ajuda/comercial` a rota filha casa mas não tem onde renderizar — o clique parece "não funcionar".
 
-## O que será entregue
+## Solução (mínima e segura)
+Usar a convenção `_` (underscore final) para **optar por sair do aninhamento de layout**, mantendo cada página independente.
 
-### 1. Rota `/ajuda` — Índice da Central
-Página inicial da ajuda, com cards clicáveis para cada módulo do sistema:
+1. Renomear `src/routes/_authenticated/ajuda.comercial.tsx` → `src/routes/_authenticated/ajuda_.comercial.tsx`.
+2. Atualizar a declaração interna do arquivo:
+   - `createFileRoute("/_authenticated/ajuda/comercial")` → `createFileRoute("/_authenticated/ajuda_/comercial")`
+   - A URL pública continua sendo `/ajuda/comercial` (o `_` é só convenção de arquivo, não aparece na URL).
+3. Ajustar o `<Link to="/ajuda/comercial">` no `ModuleCard` (em `ajuda.tsx`) — o `to` continua `/ajuda/comercial`, sem mudança visível, mas validar que o type-check do TanStack aceita após o regen do `routeTree.gen.ts`.
+4. Conferir o link "Voltar à Central de Ajuda" dentro de `ajuda_.comercial.tsx` (`to="/ajuda"`) — segue funcionando normalmente.
 
-- **Comercial** (pronto, conteúdo completo)
-- **Financeiro** (placeholder "em breve")
-- **Conciliação** (placeholder)
-- **Operação** (placeholder)
-- **Gestão** (placeholder)
-- **BI** (placeholder)
-- **Hub** (placeholder)
-- **Admin** (placeholder)
+Não há mudanças visuais, nem em outros módulos. Nenhum componente compartilhado é alterado.
 
-Cada card mostra: ícone do módulo, nome, 1 linha de descrição e um selo "Disponível" ou "Em breve". Layout em grid responsivo (3 colunas no desktop, 1 no mobile).
+## Verificação
+- Recarregar `/ajuda` → clicar no card Comercial → tela de ajuda do Comercial deve carregar.
+- Botão "Voltar" deve retornar para `/ajuda`.
+- Acesso direto via URL `/ajuda/comercial` deve funcionar.
 
-### 2. Rota `/ajuda/comercial` — Página completa do Comercial
-
-Quatro blocos em ordem fixa, todos em **linguagem de operador** (sem jargão técnico, sem nomes de tabela, sem código):
-
-**A. Visão geral em 3 linhas**
-Resumo do que o módulo faz, para quem serve e qual o resultado final esperado (proposta aceita → cobrança gerada → entrada da operação).
-
-**B. Fluxo visual do pipeline**
-Diagrama com os 10 passos do Kanban, em quadradinhos coloridos conectados por setas:
-Reunião realizada → Proposta em geração → Aguardando validação → Pronta para envio → Enviada → Aguardando aceite → Aceita → Cobrança pendente → Entrada recebida → Enviado para operação.
-
-Cada quadradinho clicável abre uma descrição curta do que acontece naquela etapa e quem é o responsável.
-
-**C. Passo a passo "como eu faço para…"** (accordion expansível)
-- Cadastrar um novo cliente
-- Criar uma proposta (devis) do zero
-- Gerar proposta a partir da ata da reunião (upload + IA)
-- Usar as sugestões da IA e validar o conteúdo
-- Marcar a proposta como pronta para envio (checklist de validação)
-- Enviar a proposta por e-mail ao cliente
-- Acompanhar o aceite/recusa do cliente
-- Entender quando a cobrança de 50% aparece no Financeiro
-- Mover um card no Kanban e o que cada coluna significa
-- Reenviar uma proposta ou corrigir uma já enviada
-
-**D. Perguntas frequentes (FAQ)**
-- "Por que minha proposta não vai para 'Pronta para envio'?"
-- "O cliente disse que não recebeu o e-mail, e agora?"
-- "O link de aceite expira?"
-- "Aceitei a proposta mas não vejo a cobrança no Financeiro"
-- "Posso editar uma proposta depois de enviada?"
-- "Qual a diferença entre 'Aceita' e 'Cobrança pendente'?"
-- "Como recuso/cancelo uma proposta no nome do cliente?"
-
-### 3. Componentes reutilizáveis
-Criados de forma genérica para servir aos próximos módulos sem retrabalho:
-
-- `<HelpHero>` — cabeçalho da página com ícone, título e subtítulo
-- `<PipelineDiagram>` — diagrama horizontal de etapas com hover/click
-- `<HowToAccordion>` — lista de tarefas expansíveis com passo a passo numerado
-- `<HelpFAQ>` — perguntas e respostas em accordion
-- `<HelpCallout>` — caixa de destaque (dica, atenção, importante)
-- `<ModuleCard>` — card do índice `/ajuda`
-
-### 4. Botão "?" no header de `/comercial`
-Ícone discreto no canto superior do módulo Comercial que abre `/ajuda/comercial` em nova aba (ou navega direto, a definir no detalhamento). Mesmo padrão será replicável nos outros módulos quando suas páginas forem prontas.
-
----
-
-## Estrutura de arquivos
-
-```text
-src/
-├── routes/
-│   └── _authenticated/
-│       ├── ajuda.tsx                    (índice de módulos)
-│       └── ajuda.comercial.tsx          (página do Comercial)
-├── components/
-│   └── help/
-│       ├── HelpHero.tsx
-│       ├── PipelineDiagram.tsx
-│       ├── HowToAccordion.tsx
-│       ├── HelpFAQ.tsx
-│       ├── HelpCallout.tsx
-│       └── ModuleCard.tsx
-└── content/
-    └── help/
-        └── comercial.tsx                (conteúdo: passos, FAQ, etapas)
-```
-
-Conteúdo fica em arquivo `.tsx` versionado no git (não no banco): sem latência, sem RLS, fácil de editar e revisar.
-
-## Detalhes técnicos
-
-- Rota protegida sob `_authenticated/` — só usuários logados acessam.
-- Usa `Link` do `@tanstack/react-router` para navegação interna.
-- Componentes shadcn já existentes: `Accordion`, `Card`, `Badge`, `Button`, `Tooltip`.
-- Diagrama do pipeline em SVG inline (sem dependência nova).
-- Linguagem 100% em português, voltada ao operador final.
-- Sem mexer em nenhuma lógica de negócio existente — é só leitura/apresentação.
-- Adiciona link "Central de Ajuda" no `AppSidebar` apontando para `/ajuda`.
-
-## O que NÃO entra neste escopo
-- Conteúdo dos outros módulos (ficam como "em breve")
-- Busca global na ajuda
-- Glossário
-- Vídeos Loom embedados
-- Badges "lidos" por usuário
-- Sistema de favoritos / marcadores
-
-Esses extras ficam para uma segunda iteração, depois que a base estiver validada com o time.
-
----
-
-Posso seguir com a implementação?
+## Alternativa considerada
+Renomear `ajuda.tsx` → `ajuda.index.tsx` (transformaria `ajuda.tsx` no índice sob o layout). Funciona, mas exigiria criar um arquivo de layout `ajuda.tsx` com `<Outlet />` para os filhos — mais arquivos sem benefício, já que as páginas de ajuda não compartilham layout específico.
