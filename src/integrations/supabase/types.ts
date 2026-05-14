@@ -567,6 +567,7 @@ export type Database = {
           source_file_name: string | null
           source_sheet_name: string | null
           source_type: Database["public"]["Enums"]["source_type"]
+          transfer_pair_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -591,6 +592,7 @@ export type Database = {
           source_file_name?: string | null
           source_sheet_name?: string | null
           source_type?: Database["public"]["Enums"]["source_type"]
+          transfer_pair_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -615,6 +617,7 @@ export type Database = {
           source_file_name?: string | null
           source_sheet_name?: string | null
           source_type?: Database["public"]["Enums"]["source_type"]
+          transfer_pair_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
