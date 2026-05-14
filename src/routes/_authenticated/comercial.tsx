@@ -54,6 +54,8 @@ type DevisForm = {
   down_payment_amount: string;
   notes: string;
   title: string;
+  devis_number: string;
+  service_type: string;
 };
 
 const emptyDevis: DevisForm = {
@@ -62,11 +64,13 @@ const emptyDevis: DevisForm = {
   commercial_responsible: "",
   meeting_summary: "",
   meeting_report: "",
-  status: "rascunho",
+  status: "reuniao_realizada",
   total_amount: "",
   down_payment_amount: "",
   notes: "",
   title: "",
+  devis_number: "",
+  service_type: "",
 };
 
 function Comercial() {
