@@ -734,6 +734,20 @@ function Conciliacao() {
 
                   {/* Botão central */}
                   <div className="flex lg:flex-col items-center justify-center gap-2 lg:w-[120px]">
+                    {!isConciliado && matchedFE && (() => {
+                      const sc = matchScore(s, matchedFE);
+                      const cls = sc >= 100
+                        ? "bg-success/15 text-success border-success/30"
+                        : sc >= 60
+                        ? "bg-warning/15 text-warning border-warning/30"
+                        : "bg-muted text-muted-foreground border-border";
+                      const label = sc >= 100 ? "Match Exato" : sc >= 60 ? "Match Provável" : "Sem sugestão";
+                      return (
+                        <Badge variant="outline" className={`${cls} text-[10px]`}>
+                          {label} · {sc}%
+                        </Badge>
+                      );
+                    })()}
                     {isConciliado ? (
                       <Button
                         size="sm"
@@ -744,14 +758,26 @@ function Conciliacao() {
                         <RotateCcw className="h-4 w-4 mr-1" /> Desfazer
                       </Button>
                     ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => matchedFE && conciliatePair.mutate({ stmt: s, fe: matchedFE, existingMatchId: persistedMatch?.id })}
-                        disabled={!matchedFE || conciliatePair.isPending}
-                        title={matchedFE ? "Conciliar par" : "Selecione um lançamento à direita"}
-                      >
-                        <Link2 className="h-4 w-4 mr-1" /> Conciliar
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => matchedFE && conciliatePair.mutate({ stmt: s, fe: matchedFE, existingMatchId: persistedMatch?.id })}
+                          disabled={!matchedFE || conciliatePair.isPending}
+                          title={matchedFE ? "Conciliar par" : "Selecione um lançamento à direita"}
+                        >
+                          <Link2 className="h-4 w-4 mr-1" /> Conciliar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-primary border-primary/30 hover:bg-primary/10"
+                          onClick={() => markAsTransfer.mutate(s)}
+                          disabled={markAsTransfer.isPending}
+                          title="Marcar como transferência interna"
+                        >
+                          <ArrowLeftRight className="h-4 w-4 mr-1" /> Transf.
+                        </Button>
+                      </>
                     )}
                   </div>
 
