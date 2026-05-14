@@ -25,6 +25,7 @@ import DevisKanban from "@/components/devis/DevisKanban";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import AISuggestionsBlock, { type AISuggestions } from "@/components/devis/AISuggestionsBlock";
 import UploadAtaDialog, { type ConfirmedAtaResult } from "@/components/devis/UploadAtaDialog";
+import DevisCodePreviewDialog, { inferServicePrefix, type ServicePrefix } from "@/components/devis/DevisCodePreviewDialog";
 import { CurrencyInputBRL } from "@/components/ui/currency-input-brl";
 
 const fmtBRL = (n: number) =>
