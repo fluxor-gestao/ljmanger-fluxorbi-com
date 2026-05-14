@@ -404,6 +404,62 @@ function Conciliacao() {
     return candidates[0] ?? null;
   };
 
+  // Score 0-100 do par sugerido
+  const matchScore = (stmt: any, fe: any | null): number => {
+    if (!fe) return 0;
+    const stmtDir = stmt.direction || (Number(stmt.amount) < 0 ? "saida" : "entrada");
+    const stmtAmt = Math.abs(Number(stmt.amount));
+    const feAmount = stmtDir === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
+    let score = 0;
+    if (Math.abs(feAmount - stmtAmt) < 0.01) score += 60;
+    const dateDiff = Math.abs(new Date(fe.entry_date).getTime() - new Date(stmt.transaction_date).getTime());
+    if (dateDiff < 86400000) score += 25;
+    else if (dateDiff < 3 * 86400000) score += 15;
+    else if (dateDiff < 5 * 86400000) score += 8;
+    const desc = (fe.movement_description || "").toLowerCase();
+    const sd = (stmt.description || "").toLowerCase().slice(0, 12);
+    if (sd && desc.includes(sd)) score += 15;
+    return Math.min(score, 100);
+  };
+
+  // Marcar lançamento como transferência interna
+  const markAsTransfer = useMutation({
+    mutationFn: async (stmt: any) => {
+      const isEntrada = (stmt.direction || (Number(stmt.amount) < 0 ? "saida" : "entrada")) === "entrada";
+      const amt = Math.abs(Number(stmt.amount));
+      const { data: fe, error } = await supabase
+        .from("financial_entries")
+        .insert({
+          entry_date: stmt.transaction_date,
+          movement_description: `Transferência interna — ${stmt.description ?? ""}`.trim(),
+          amount_in: isEntrada ? amt : 0,
+          amount_out: isEntrada ? 0 : amt,
+          entry_type: "transferencia" as any,
+          source_type: "manual" as const,
+          conciliation_status: "conciliado" as const,
+          user_id: user?.id,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      await supabase.from("conciliation_matches").insert({
+        bank_statement_entry_id: stmt.id,
+        financial_entry_id: fe.id,
+        match_score: 100,
+        match_type: "manual" as const,
+        status: "confirmado" as const,
+        confirmed_by: user?.id,
+        confirmed_at: new Date().toISOString(),
+      });
+      await supabase.from("bank_statement_entries").update({ conciliation_status: "conciliado" as const }).eq("id", stmt.id);
+    },
+    onSuccess: () => {
+      toast.success("Marcado como transferência interna");
+      queryClient.invalidateQueries();
+    },
+    onError: (e: any) => toast.error(`Erro: ${e.message ?? e}`),
+  });
+
   // Pair conciliation: create or update match + flip statuses
   const conciliatePair = useMutation({
     mutationFn: async ({ stmt, fe, existingMatchId }: { stmt: any; fe: any; existingMatchId?: string }) => {
