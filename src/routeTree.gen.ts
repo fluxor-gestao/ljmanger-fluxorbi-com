@@ -21,6 +21,7 @@ import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authentic
 import { Route as AuthenticatedConciliacaoRouteImport } from './routes/_authenticated/conciliacao'
 import { Route as AuthenticatedComercialRouteImport } from './routes/_authenticated/comercial'
 import { Route as AuthenticatedBiRouteImport } from './routes/_authenticated/bi'
+import { Route as AuthenticatedAjudaRouteImport } from './routes/_authenticated/ajuda'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as PropostaAceiteTokenRouteImport } from './routes/proposta.aceite.$token'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -31,6 +32,7 @@ import { Route as ApiPublicBiKpisComercialRouteImport } from './routes/api/publi
 import { Route as ApiPublicBiFinanceiroRouteImport } from './routes/api/public/bi-financeiro'
 import { Route as ApiPublicBiComercialRouteImport } from './routes/api/public/bi-comercial'
 import { Route as ApiPublicSplatRouteImport } from './routes/api/public/$'
+import { Route as AuthenticatedAjudaComercialRouteImport } from './routes/_authenticated/ajuda.comercial'
 import { Route as AuthenticatedAdminApiKeysRouteImport } from './routes/_authenticated/admin_.api-keys'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -97,6 +99,11 @@ const AuthenticatedBiRoute = AuthenticatedBiRouteImport.update({
   path: '/bi',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAjudaRoute = AuthenticatedAjudaRouteImport.update({
+  id: '/ajuda',
+  path: '/ajuda',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -149,6 +156,12 @@ const ApiPublicSplatRoute = ApiPublicSplatRouteImport.update({
   path: '/api/public/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAjudaComercialRoute =
+  AuthenticatedAjudaComercialRouteImport.update({
+    id: '/comercial',
+    path: '/comercial',
+    getParentRoute: () => AuthenticatedAjudaRoute,
+  } as any)
 const AuthenticatedAdminApiKeysRoute =
   AuthenticatedAdminApiKeysRouteImport.update({
     id: '/admin_/api-keys',
@@ -185,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/ajuda': typeof AuthenticatedAjudaRouteWithChildren
   '/bi': typeof AuthenticatedBiRoute
   '/comercial': typeof AuthenticatedComercialRoute
   '/conciliacao': typeof AuthenticatedConciliacaoRoute
@@ -194,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/operacao': typeof AuthenticatedOperacaoRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/ajuda/comercial': typeof AuthenticatedAjudaComercialRoute
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
@@ -213,6 +228,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/ajuda': typeof AuthenticatedAjudaRouteWithChildren
   '/bi': typeof AuthenticatedBiRoute
   '/comercial': typeof AuthenticatedComercialRoute
   '/conciliacao': typeof AuthenticatedConciliacaoRoute
@@ -222,6 +238,7 @@ export interface FileRoutesByTo {
   '/operacao': typeof AuthenticatedOperacaoRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/ajuda/comercial': typeof AuthenticatedAjudaComercialRoute
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
@@ -243,6 +260,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/ajuda': typeof AuthenticatedAjudaRouteWithChildren
   '/_authenticated/bi': typeof AuthenticatedBiRoute
   '/_authenticated/comercial': typeof AuthenticatedComercialRoute
   '/_authenticated/conciliacao': typeof AuthenticatedConciliacaoRoute
@@ -252,6 +270,7 @@ export interface FileRoutesById {
   '/_authenticated/operacao': typeof AuthenticatedOperacaoRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/admin_/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/_authenticated/ajuda/comercial': typeof AuthenticatedAjudaComercialRoute
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
@@ -273,6 +292,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/unsubscribe'
     | '/admin'
+    | '/ajuda'
     | '/bi'
     | '/comercial'
     | '/conciliacao'
@@ -282,6 +302,7 @@ export interface FileRouteTypes {
     | '/operacao'
     | '/email/unsubscribe'
     | '/admin/api-keys'
+    | '/ajuda/comercial'
     | '/api/public/$'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
@@ -301,6 +322,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/unsubscribe'
     | '/admin'
+    | '/ajuda'
     | '/bi'
     | '/comercial'
     | '/conciliacao'
@@ -310,6 +332,7 @@ export interface FileRouteTypes {
     | '/operacao'
     | '/email/unsubscribe'
     | '/admin/api-keys'
+    | '/ajuda/comercial'
     | '/api/public/$'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
@@ -330,6 +353,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/unsubscribe'
     | '/_authenticated/admin'
+    | '/_authenticated/ajuda'
     | '/_authenticated/bi'
     | '/_authenticated/comercial'
     | '/_authenticated/conciliacao'
@@ -339,6 +363,7 @@ export interface FileRouteTypes {
     | '/_authenticated/operacao'
     | '/email/unsubscribe'
     | '/_authenticated/admin_/api-keys'
+    | '/_authenticated/ajuda/comercial'
     | '/api/public/$'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
@@ -460,6 +485,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBiRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/ajuda': {
+      id: '/_authenticated/ajuda'
+      path: '/ajuda'
+      fullPath: '/ajuda'
+      preLoaderRoute: typeof AuthenticatedAjudaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -530,6 +562,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/ajuda/comercial': {
+      id: '/_authenticated/ajuda/comercial'
+      path: '/comercial'
+      fullPath: '/ajuda/comercial'
+      preLoaderRoute: typeof AuthenticatedAjudaComercialRouteImport
+      parentRoute: typeof AuthenticatedAjudaRoute
+    }
     '/_authenticated/admin_/api-keys': {
       id: '/_authenticated/admin_/api-keys'
       path: '/admin/api-keys'
@@ -568,8 +607,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAjudaRouteChildren {
+  AuthenticatedAjudaComercialRoute: typeof AuthenticatedAjudaComercialRoute
+}
+
+const AuthenticatedAjudaRouteChildren: AuthenticatedAjudaRouteChildren = {
+  AuthenticatedAjudaComercialRoute: AuthenticatedAjudaComercialRoute,
+}
+
+const AuthenticatedAjudaRouteWithChildren =
+  AuthenticatedAjudaRoute._addFileChildren(AuthenticatedAjudaRouteChildren)
+
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAjudaRoute: typeof AuthenticatedAjudaRouteWithChildren
   AuthenticatedBiRoute: typeof AuthenticatedBiRoute
   AuthenticatedComercialRoute: typeof AuthenticatedComercialRoute
   AuthenticatedConciliacaoRoute: typeof AuthenticatedConciliacaoRoute
@@ -583,6 +634,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAjudaRoute: AuthenticatedAjudaRouteWithChildren,
   AuthenticatedBiRoute: AuthenticatedBiRoute,
   AuthenticatedComercialRoute: AuthenticatedComercialRoute,
   AuthenticatedConciliacaoRoute: AuthenticatedConciliacaoRoute,

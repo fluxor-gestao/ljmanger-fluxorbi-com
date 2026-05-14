@@ -333,9 +333,14 @@ function Comercial() {
           <h1 className="text-3xl font-bold font-display">Devis</h1>
           <p className="text-muted-foreground mt-1">Gestão comercial — clientes e propostas</p>
         </div>
-        <Button variant="outline" onClick={() => window.history.back()} className="sm:self-start">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
-        </Button>
+        <div className="flex gap-2 sm:self-start">
+          <Button variant="ghost" size="icon" asChild title="Central de Ajuda — Comercial">
+            <Link to="/ajuda/comercial"><HelpCircle className="h-5 w-5" /></Link>
+          </Button>
+          <Button variant="outline" onClick={() => window.history.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="devis">

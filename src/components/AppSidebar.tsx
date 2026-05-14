@@ -6,6 +6,7 @@ import {
   Building2,
   BarChart3,
   Shield,
+  HelpCircle,
   LogOut,
 } from "lucide-react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
@@ -36,6 +37,7 @@ const managementItems = [
   { title: "Gestão", url: "/gestao", icon: Building2 },
   { title: "BI / Business Intelligence", url: "/bi", icon: BarChart3 },
   { title: "Opções / Usuários", url: "/admin", icon: Shield, adminOnly: true },
+  { title: "Central de Ajuda", url: "/ajuda", icon: HelpCircle },
 ];
 
 export function AppSidebar() {
