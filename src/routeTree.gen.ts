@@ -32,7 +32,7 @@ import { Route as ApiPublicBiKpisComercialRouteImport } from './routes/api/publi
 import { Route as ApiPublicBiFinanceiroRouteImport } from './routes/api/public/bi-financeiro'
 import { Route as ApiPublicBiComercialRouteImport } from './routes/api/public/bi-comercial'
 import { Route as ApiPublicSplatRouteImport } from './routes/api/public/$'
-import { Route as AuthenticatedAjudaComercialRouteImport } from './routes/_authenticated/ajuda.comercial'
+import { Route as AuthenticatedAjudaComercialRouteImport } from './routes/_authenticated/ajuda_.comercial'
 import { Route as AuthenticatedAdminApiKeysRouteImport } from './routes/_authenticated/admin_.api-keys'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -158,9 +158,9 @@ const ApiPublicSplatRoute = ApiPublicSplatRouteImport.update({
 } as any)
 const AuthenticatedAjudaComercialRoute =
   AuthenticatedAjudaComercialRouteImport.update({
-    id: '/comercial',
-    path: '/comercial',
-    getParentRoute: () => AuthenticatedAjudaRoute,
+    id: '/ajuda_/comercial',
+    path: '/ajuda/comercial',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAdminApiKeysRoute =
   AuthenticatedAdminApiKeysRouteImport.update({
@@ -198,7 +198,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRoute
-  '/ajuda': typeof AuthenticatedAjudaRouteWithChildren
+  '/ajuda': typeof AuthenticatedAjudaRoute
   '/bi': typeof AuthenticatedBiRoute
   '/comercial': typeof AuthenticatedComercialRoute
   '/conciliacao': typeof AuthenticatedConciliacaoRoute
@@ -228,7 +228,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRoute
-  '/ajuda': typeof AuthenticatedAjudaRouteWithChildren
+  '/ajuda': typeof AuthenticatedAjudaRoute
   '/bi': typeof AuthenticatedBiRoute
   '/comercial': typeof AuthenticatedComercialRoute
   '/conciliacao': typeof AuthenticatedConciliacaoRoute
@@ -260,7 +260,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
-  '/_authenticated/ajuda': typeof AuthenticatedAjudaRouteWithChildren
+  '/_authenticated/ajuda': typeof AuthenticatedAjudaRoute
   '/_authenticated/bi': typeof AuthenticatedBiRoute
   '/_authenticated/comercial': typeof AuthenticatedComercialRoute
   '/_authenticated/conciliacao': typeof AuthenticatedConciliacaoRoute
@@ -270,7 +270,7 @@ export interface FileRoutesById {
   '/_authenticated/operacao': typeof AuthenticatedOperacaoRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/admin_/api-keys': typeof AuthenticatedAdminApiKeysRoute
-  '/_authenticated/ajuda/comercial': typeof AuthenticatedAjudaComercialRoute
+  '/_authenticated/ajuda_/comercial': typeof AuthenticatedAjudaComercialRoute
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
@@ -363,7 +363,7 @@ export interface FileRouteTypes {
     | '/_authenticated/operacao'
     | '/email/unsubscribe'
     | '/_authenticated/admin_/api-keys'
-    | '/_authenticated/ajuda/comercial'
+    | '/_authenticated/ajuda_/comercial'
     | '/api/public/$'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
@@ -562,12 +562,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/ajuda/comercial': {
-      id: '/_authenticated/ajuda/comercial'
-      path: '/comercial'
+    '/_authenticated/ajuda_/comercial': {
+      id: '/_authenticated/ajuda_/comercial'
+      path: '/ajuda/comercial'
       fullPath: '/ajuda/comercial'
       preLoaderRoute: typeof AuthenticatedAjudaComercialRouteImport
-      parentRoute: typeof AuthenticatedAjudaRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin_/api-keys': {
       id: '/_authenticated/admin_/api-keys'
@@ -607,20 +607,9 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedAjudaRouteChildren {
-  AuthenticatedAjudaComercialRoute: typeof AuthenticatedAjudaComercialRoute
-}
-
-const AuthenticatedAjudaRouteChildren: AuthenticatedAjudaRouteChildren = {
-  AuthenticatedAjudaComercialRoute: AuthenticatedAjudaComercialRoute,
-}
-
-const AuthenticatedAjudaRouteWithChildren =
-  AuthenticatedAjudaRoute._addFileChildren(AuthenticatedAjudaRouteChildren)
-
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
-  AuthenticatedAjudaRoute: typeof AuthenticatedAjudaRouteWithChildren
+  AuthenticatedAjudaRoute: typeof AuthenticatedAjudaRoute
   AuthenticatedBiRoute: typeof AuthenticatedBiRoute
   AuthenticatedComercialRoute: typeof AuthenticatedComercialRoute
   AuthenticatedConciliacaoRoute: typeof AuthenticatedConciliacaoRoute
@@ -629,12 +618,13 @@ interface AuthenticatedRouteChildren {
   AuthenticatedHubRoute: typeof AuthenticatedHubRoute
   AuthenticatedOperacaoRoute: typeof AuthenticatedOperacaoRoute
   AuthenticatedAdminApiKeysRoute: typeof AuthenticatedAdminApiKeysRoute
+  AuthenticatedAjudaComercialRoute: typeof AuthenticatedAjudaComercialRoute
   AuthenticatedComercialDevisIdRoute: typeof AuthenticatedComercialDevisIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
-  AuthenticatedAjudaRoute: AuthenticatedAjudaRouteWithChildren,
+  AuthenticatedAjudaRoute: AuthenticatedAjudaRoute,
   AuthenticatedBiRoute: AuthenticatedBiRoute,
   AuthenticatedComercialRoute: AuthenticatedComercialRoute,
   AuthenticatedConciliacaoRoute: AuthenticatedConciliacaoRoute,
@@ -643,6 +633,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedHubRoute: AuthenticatedHubRoute,
   AuthenticatedOperacaoRoute: AuthenticatedOperacaoRoute,
   AuthenticatedAdminApiKeysRoute: AuthenticatedAdminApiKeysRoute,
+  AuthenticatedAjudaComercialRoute: AuthenticatedAjudaComercialRoute,
   AuthenticatedComercialDevisIdRoute: AuthenticatedComercialDevisIdRoute,
 }
 
@@ -672,13 +663,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

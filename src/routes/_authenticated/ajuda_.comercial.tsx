@@ -82,6 +82,6 @@ function AjudaComercial() {
   );
 }
 
-export const Route = createFileRoute("/_authenticated/ajuda/comercial")({
+export const Route = createFileRoute("/_authenticated/ajuda_/comercial")({
   component: AjudaComercial,
 });
