@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { Plus, Users, FileText, Eye, Pencil, CalendarIcon, Filter, LayoutGrid, List, Sparkles, Loader2, Upload, ArrowLeft, Send, Clock, CheckCircle2 } from "lucide-react";
+import { Plus, Users, FileText, Eye, Pencil, CalendarIcon, Filter, LayoutGrid, List, Sparkles, Loader2, Upload, ArrowLeft, Send, Clock, CheckCircle2, HelpCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -333,9 +333,14 @@ function Comercial() {
           <h1 className="text-3xl font-bold font-display">Devis</h1>
           <p className="text-muted-foreground mt-1">Gestão comercial — clientes e propostas</p>
         </div>
-        <Button variant="outline" onClick={() => window.history.back()} className="sm:self-start">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
-        </Button>
+        <div className="flex gap-2 sm:self-start">
+          <Button variant="ghost" size="icon" asChild title="Central de Ajuda — Comercial">
+            <Link to="/ajuda/comercial"><HelpCircle className="h-5 w-5" /></Link>
+          </Button>
+          <Button variant="outline" onClick={() => window.history.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="devis">

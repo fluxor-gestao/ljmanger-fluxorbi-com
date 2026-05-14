@@ -1,53 +1,115 @@
-## Objetivo
+# Central de Ajuda — Escopo inicial (itens 1 a 4)
 
-Trocar o envio do e-mail de proposta (devis) do remetente provisório `onboarding@resend.dev` (Resend) para o **Lovable Emails** usando o domínio `lundgaardjensen.com` (sub-remetente `notify.lundgaardjensen.com`), mantendo o mesmo HTML, CTA "Aceitar Proposta", anexo PDF e idioma (PT/FR/EN/ES).
+Vamos entregar a base da Central de Ajuda já com o módulo Comercial completo. Os demais módulos ficam como placeholder ("em construção") e a gente preenche conforme cada um amadurece.
 
-## Passos
+## O que será entregue
 
-### 1. Configurar o domínio (você faz uma vez)
+### 1. Rota `/ajuda` — Índice da Central
+Página inicial da ajuda, com cards clicáveis para cada módulo do sistema:
 
-Vou abrir o diálogo de setup de e-mail. Você informa `lundgaardjensen.com` e o sistema vai gerar 2 registros NS (`notify.lundgaardjensen.com → ns3/ns4.lovable.cloud`) que você precisa adicionar no provedor de DNS do domínio. Não exige tocar nos registros MX/SPF/DKIM atuais do domínio — só delegamos o subdomínio `notify`.
+- **Comercial** (pronto, conteúdo completo)
+- **Financeiro** (placeholder "em breve")
+- **Conciliação** (placeholder)
+- **Operação** (placeholder)
+- **Gestão** (placeholder)
+- **BI** (placeholder)
+- **Hub** (placeholder)
+- **Admin** (placeholder)
 
-DNS pode levar até 72h para propagar (geralmente minutos). O scaffolding e deploy podem ser feitos antes disso; o envio começa quando o DNS verificar.
+Cada card mostra: ícone do módulo, nome, 1 linha de descrição e um selo "Disponível" ou "Em breve". Layout em grid responsivo (3 colunas no desktop, 1 no mobile).
 
-### 2. Provisionar a infraestrutura de e-mail
+### 2. Rota `/ajuda/comercial` — Página completa do Comercial
 
-Backend: filas pgmq, tabelas `email_send_log`, `suppressed_emails`, `email_unsubscribe_tokens`, RPCs `enqueue_email/...`, cron de processamento e server route `process-email-queue`. Tudo automático via tooling Lovable — sem migrações manuais.
+Quatro blocos em ordem fixa, todos em **linguagem de operador** (sem jargão técnico, sem nomes de tabela, sem código):
 
-### 3. Reescrever o envio da proposta (`src/components/devis/SendDevisDialog.tsx` + nova rota)
+**A. Visão geral em 3 linhas**
+Resumo do que o módulo faz, para quem serve e qual o resultado final esperado (proposta aceita → cobrança gerada → entrada da operação).
 
-- Criar template React Email em `src/lib/email-templates/devis-proposal.tsx` reproduzindo o HTML atual do `send-devis-proposal/index.ts` (header LUNDGAARD JENSEN, faixa dourada, mensagem multi-idioma, botões verde "Aceitar" / "Recusar" linkando para `accept_url`, rodapé com endereço/contatos). I18N (`pt`/`fr`/`en`/`es`) preservado.
-- Registrar em `src/lib/email-templates/registry.ts`.
-- Criar server route autenticada `src/routes/api/send-devis-proposal.ts` (substitui a edge function) que:
-  1. Valida JWT do usuário logado.
-  2. Recebe `devis_id`, `to`, `subject`, `message_text`, `pdf_base64`, `pdf_filename`, `accept_url`, `client_name`, `devis_number`, `language`.
-  3. Enfileira na fila transacional via `enqueue_email` com `templateData` (mensagem, link, idioma).
-  4. Atualiza `devis.status = 'enviada_ao_cliente'` e `sent_at`.
-- `SendDevisDialog.tsx`: trocar `supabase.functions.invoke("send-devis-proposal", ...)` por `fetch("/api/send-devis-proposal", ...)` com header Authorization. Resto (geração de PDF, UI) permanece.
+**B. Fluxo visual do pipeline**
+Diagrama com os 10 passos do Kanban, em quadradinhos coloridos conectados por setas:
+Reunião realizada → Proposta em geração → Aguardando validação → Pronta para envio → Enviada → Aguardando aceite → Aceita → Cobrança pendente → Entrada recebida → Enviado para operação.
 
-> ⚠️ **Anexos PDF**: o pipeline de Lovable Emails **não suporta anexos nativamente**. Para preservar o PDF, vou subir o PDF gerado para um bucket Supabase Storage (`devis-pdfs`, privado) e gerar um link assinado (validade 30 dias) que entra no e-mail como botão "📎 Baixar Proposta (PDF)" abaixo do CTA verde. Isso melhora também a experiência mobile (alguns clientes recusam anexos).
+Cada quadradinho clicável abre uma descrição curta do que acontece naquela etapa e quem é o responsável.
 
-### 4. Remover o aviso de "modo de teste do Resend"
+**C. Passo a passo "como eu faço para…"** (accordion expansível)
+- Cadastrar um novo cliente
+- Criar uma proposta (devis) do zero
+- Gerar proposta a partir da ata da reunião (upload + IA)
+- Usar as sugestões da IA e validar o conteúdo
+- Marcar a proposta como pronta para envio (checklist de validação)
+- Enviar a proposta por e-mail ao cliente
+- Acompanhar o aceite/recusa do cliente
+- Entender quando a cobrança de 50% aparece no Financeiro
+- Mover um card no Kanban e o que cada coluna significa
+- Reenviar uma proposta ou corrigir uma já enviada
 
-Tirar o banner amarelo do `SendDevisDialog.tsx` (não se aplica mais).
+**D. Perguntas frequentes (FAQ)**
+- "Por que minha proposta não vai para 'Pronta para envio'?"
+- "O cliente disse que não recebeu o e-mail, e agora?"
+- "O link de aceite expira?"
+- "Aceitei a proposta mas não vejo a cobrança no Financeiro"
+- "Posso editar uma proposta depois de enviada?"
+- "Qual a diferença entre 'Aceita' e 'Cobrança pendente'?"
+- "Como recuso/cancelo uma proposta no nome do cliente?"
 
-### 5. Limpeza (depois que confirmar funcionando)
+### 3. Componentes reutilizáveis
+Criados de forma genérica para servir aos próximos módulos sem retrabalho:
 
-- Apagar `supabase/functions/send-devis-proposal/index.ts` e o bloco em `supabase/config.toml`.
-- Remover o segredo `RESEND_API_KEY` (você pode manter se quiser reverter rapidamente).
+- `<HelpHero>` — cabeçalho da página com ícone, título e subtítulo
+- `<PipelineDiagram>` — diagrama horizontal de etapas com hover/click
+- `<HowToAccordion>` — lista de tarefas expansíveis com passo a passo numerado
+- `<HelpFAQ>` — perguntas e respostas em accordion
+- `<HelpCallout>` — caixa de destaque (dica, atenção, importante)
+- `<ModuleCard>` — card do índice `/ajuda`
 
-## O que muda para o cliente final
-
-- Remetente passa a ser `Lundgaard Jensen <noreply@lundgaardjensen.com>` (em vez de `onboarding@resend.dev`).
-- Layout, idiomas e botão "Aceitar Proposta" idênticos.
-- Anexo vira botão "Baixar Proposta (PDF)" no corpo do e-mail.
-- Entregabilidade muito melhor (SPF/DKIM próprios, sem domínio compartilhado).
-- Ganha rastreio: cada envio aparece em `email_send_log`, com retry automático em caso de falha temporária e supressão de bounces.
-
-## Bloqueio na imagem do aceite (problema relatado antes)
-
-Enquanto isso, esse caminho continua igual — a rota `/proposta/aceite/$token` e a edge function `accept-devis-proposal` permanecem, então o link no e-mail continua funcionando.
+### 4. Botão "?" no header de `/comercial`
+Ícone discreto no canto superior do módulo Comercial que abre `/ajuda/comercial` em nova aba (ou navega direto, a definir no detalhamento). Mesmo padrão será replicável nos outros módulos quando suas páginas forem prontas.
 
 ---
 
-Confirma? Quando aprovar, vou abrir o diálogo de configuração do domínio e seguir do passo 1 ao 5 em sequência.
+## Estrutura de arquivos
+
+```text
+src/
+├── routes/
+│   └── _authenticated/
+│       ├── ajuda.tsx                    (índice de módulos)
+│       └── ajuda.comercial.tsx          (página do Comercial)
+├── components/
+│   └── help/
+│       ├── HelpHero.tsx
+│       ├── PipelineDiagram.tsx
+│       ├── HowToAccordion.tsx
+│       ├── HelpFAQ.tsx
+│       ├── HelpCallout.tsx
+│       └── ModuleCard.tsx
+└── content/
+    └── help/
+        └── comercial.tsx                (conteúdo: passos, FAQ, etapas)
+```
+
+Conteúdo fica em arquivo `.tsx` versionado no git (não no banco): sem latência, sem RLS, fácil de editar e revisar.
+
+## Detalhes técnicos
+
+- Rota protegida sob `_authenticated/` — só usuários logados acessam.
+- Usa `Link` do `@tanstack/react-router` para navegação interna.
+- Componentes shadcn já existentes: `Accordion`, `Card`, `Badge`, `Button`, `Tooltip`.
+- Diagrama do pipeline em SVG inline (sem dependência nova).
+- Linguagem 100% em português, voltada ao operador final.
+- Sem mexer em nenhuma lógica de negócio existente — é só leitura/apresentação.
+- Adiciona link "Central de Ajuda" no `AppSidebar` apontando para `/ajuda`.
+
+## O que NÃO entra neste escopo
+- Conteúdo dos outros módulos (ficam como "em breve")
+- Busca global na ajuda
+- Glossário
+- Vídeos Loom embedados
+- Badges "lidos" por usuário
+- Sistema de favoritos / marcadores
+
+Esses extras ficam para uma segunda iteração, depois que a base estiver validada com o time.
+
+---
+
+Posso seguir com a implementação?
