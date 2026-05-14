@@ -32,6 +32,7 @@ import { Route as ApiPublicBiKpisComercialRouteImport } from './routes/api/publi
 import { Route as ApiPublicBiFinanceiroRouteImport } from './routes/api/public/bi-financeiro'
 import { Route as ApiPublicBiComercialRouteImport } from './routes/api/public/bi-comercial'
 import { Route as ApiPublicSplatRouteImport } from './routes/api/public/$'
+import { Route as AuthenticatedAjudaComercialRouteImport } from './routes/_authenticated/ajuda_.comercial'
 import { Route as AuthenticatedAdminApiKeysRouteImport } from './routes/_authenticated/admin_.api-keys'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -155,6 +156,12 @@ const ApiPublicSplatRoute = ApiPublicSplatRouteImport.update({
   path: '/api/public/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAjudaComercialRoute =
+  AuthenticatedAjudaComercialRouteImport.update({
+    id: '/ajuda_/comercial',
+    path: '/ajuda/comercial',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminApiKeysRoute =
   AuthenticatedAdminApiKeysRouteImport.update({
     id: '/admin_/api-keys',
@@ -201,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/operacao': typeof AuthenticatedOperacaoRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/ajuda/comercial': typeof AuthenticatedAjudaComercialRoute
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
@@ -230,6 +238,7 @@ export interface FileRoutesByTo {
   '/operacao': typeof AuthenticatedOperacaoRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/admin/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/ajuda/comercial': typeof AuthenticatedAjudaComercialRoute
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
@@ -261,6 +270,7 @@ export interface FileRoutesById {
   '/_authenticated/operacao': typeof AuthenticatedOperacaoRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/admin_/api-keys': typeof AuthenticatedAdminApiKeysRoute
+  '/_authenticated/ajuda_/comercial': typeof AuthenticatedAjudaComercialRoute
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/bi-comercial': typeof ApiPublicBiComercialRoute
   '/api/public/bi-financeiro': typeof ApiPublicBiFinanceiroRoute
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
     | '/operacao'
     | '/email/unsubscribe'
     | '/admin/api-keys'
+    | '/ajuda/comercial'
     | '/api/public/$'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
@@ -321,6 +332,7 @@ export interface FileRouteTypes {
     | '/operacao'
     | '/email/unsubscribe'
     | '/admin/api-keys'
+    | '/ajuda/comercial'
     | '/api/public/$'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
@@ -351,6 +363,7 @@ export interface FileRouteTypes {
     | '/_authenticated/operacao'
     | '/email/unsubscribe'
     | '/_authenticated/admin_/api-keys'
+    | '/_authenticated/ajuda_/comercial'
     | '/api/public/$'
     | '/api/public/bi-comercial'
     | '/api/public/bi-financeiro'
@@ -549,6 +562,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/ajuda_/comercial': {
+      id: '/_authenticated/ajuda_/comercial'
+      path: '/ajuda/comercial'
+      fullPath: '/ajuda/comercial'
+      preLoaderRoute: typeof AuthenticatedAjudaComercialRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin_/api-keys': {
       id: '/_authenticated/admin_/api-keys'
       path: '/admin/api-keys'
@@ -598,6 +618,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedHubRoute: typeof AuthenticatedHubRoute
   AuthenticatedOperacaoRoute: typeof AuthenticatedOperacaoRoute
   AuthenticatedAdminApiKeysRoute: typeof AuthenticatedAdminApiKeysRoute
+  AuthenticatedAjudaComercialRoute: typeof AuthenticatedAjudaComercialRoute
   AuthenticatedComercialDevisIdRoute: typeof AuthenticatedComercialDevisIdRoute
 }
 
@@ -612,6 +633,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedHubRoute: AuthenticatedHubRoute,
   AuthenticatedOperacaoRoute: AuthenticatedOperacaoRoute,
   AuthenticatedAdminApiKeysRoute: AuthenticatedAdminApiKeysRoute,
+  AuthenticatedAjudaComercialRoute: AuthenticatedAjudaComercialRoute,
   AuthenticatedComercialDevisIdRoute: AuthenticatedComercialDevisIdRoute,
 }
 
@@ -641,13 +663,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
