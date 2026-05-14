@@ -602,6 +602,23 @@ function Comercial() {
             onConfirm={handleAtaConfirm}
           />
 
+          <DevisCodePreviewDialog
+            open={codePreviewOpen}
+            onOpenChange={(o) => {
+              setCodePreviewOpen(o);
+              if (!o) setPendingAta(null);
+            }}
+            clientName={pendingAta ? clientsById[pendingAta.client_id]?.name : undefined}
+            initialPrefix={inferServicePrefix(
+              pendingAta?.payload.devis.service_type,
+              pendingAta?.payload.devis.responsible_sector,
+              pendingAta?.payload.devis.scope_description,
+              pendingAta?.payload.meeting.report,
+            )}
+            serviceTypeHint={pendingAta?.payload.devis.service_type}
+            onConfirm={handleCodeConfirmed}
+          />
+
           {view === "kanban" ? (
             <DevisKanban
               devis={filteredDevis}
