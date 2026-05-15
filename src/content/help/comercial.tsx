@@ -5,7 +5,8 @@ import { type FAQItem } from "@/components/help/HelpFAQ";
 export const comercialOverview = [
   "O módulo Comercial cuida de todo o caminho da proposta: do primeiro contato com o cliente até o aceite formal e a geração da cobrança de entrada.",
   "Quem opera: equipe comercial e gerência. Quem consulta: financeiro (para acompanhar entradas) e operação (para receber o trabalho aprovado).",
-  "Resultado esperado ao fim do fluxo: cliente cadastrado, proposta aceita, cobrança de 50% lançada no Financeiro e o serviço pronto para ser enviado à Operação.",
+  "Cada proposta recebe um código único no momento da criação (ex.: DE202605003 para Advocacia, AM... para Ambiental, CO... para Contábil), confirmado em uma tela rápida antes do rascunho ser gerado.",
+  "Resultado esperado ao fim do fluxo: cliente cadastrado, proposta aceita, cobrança de 50% lançada no Financeiro e o serviço criado automaticamente na Operação.",
 ];
 
 export const comercialPipeline: PipelineStep[] = [
@@ -15,7 +16,7 @@ export const comercialPipeline: PipelineStep[] = [
     tone: "neutral",
     responsible: "Comercial",
     description:
-      "Você teve a reunião com o cliente e cria o devis (proposta). Pode preencher do zero ou subir a ata da reunião para a IA extrair os pontos.",
+      "Você teve a reunião com o cliente e cria o devis. Pode preencher do zero ou subir a ata para a IA extrair os pontos. Toda nova proposta nasce nesta coluna — o status 'rascunho' antigo foi substituído por esta etapa visível no Kanban.",
   },
   {
     id: "geracao",
@@ -23,7 +24,7 @@ export const comercialPipeline: PipelineStep[] = [
     tone: "blue",
     responsible: "Comercial + IA",
     description:
-      "A IA gera sugestões de tipo de serviço, escopo e estrutura da proposta. Você revisa, aceita ou edita cada bloco.",
+      "A IA gera sugestões de tipo de serviço, escopo e estrutura. O sistema move o card para esta coluna automaticamente assim que a IA termina de salvar as sugestões. Você revisa, aceita ou edita cada bloco.",
   },
   {
     id: "validacao",
@@ -31,15 +32,15 @@ export const comercialPipeline: PipelineStep[] = [
     tone: "blue",
     responsible: "Comercial",
     description:
-      "Antes de enviar, é preciso passar pelo checklist de validação (5 confirmações: dados do cliente, escopo, valores, prazo e responsável).",
+      "Assim que você marca a primeira das 5 confirmações do checklist, o card avança automaticamente para esta coluna. As 5 verificações são: dados do cliente, escopo, valores, prazo e responsável.",
   },
   {
     id: "pronta",
     label: "Pronta para envio",
     tone: "amber",
-    responsible: "Comercial",
+    responsible: "Sistema",
     description:
-      "Checklist concluído. A proposta está revisada e pode ser enviada ao cliente por e-mail.",
+      "Quando as 5 confirmações do checklist são marcadas, o sistema move o card sozinho para esta coluna e libera o botão de envio. Você não precisa arrastar.",
   },
   {
     id: "enviada",
@@ -63,7 +64,7 @@ export const comercialPipeline: PipelineStep[] = [
     tone: "violet",
     responsible: "Cliente / Sistema",
     description:
-      "Cliente clicou em aceitar. Data, hora e IP do aceite ficam registrados. O sistema dispara automaticamente a próxima etapa.",
+      "Cliente clicou em aceitar. Data, hora e IP do aceite ficam registrados. O sistema dispara automaticamente a cobrança e a criação do serviço na Operação.",
   },
   {
     id: "cobranca",
@@ -85,9 +86,9 @@ export const comercialPipeline: PipelineStep[] = [
     id: "operacao",
     label: "Enviado para operação",
     tone: "emerald",
-    responsible: "Comercial → Operação",
+    responsible: "Sistema → Operação",
     description:
-      "Última etapa do Comercial: o trabalho é entregue à Operação para começar a execução.",
+      "O serviço já foi criado automaticamente na Operação no momento do aceite (status 'a iniciar', com cliente, unidade de negócio, prazo e responsável herdados do devis). Esta coluna marca o encerramento do ciclo comercial.",
   },
 ];
 
@@ -109,7 +110,8 @@ export const comercialHowTo: HowToItem[] = [
       "Aba 'Devis' → botão 'Nova proposta'.",
       "Selecione o cliente, a data da reunião e o responsável comercial.",
       "Preencha o título da proposta, valor total e prazo.",
-      "Salve como rascunho. A proposta entra no Kanban na coluna 'Reunião realizada'.",
+      "Confirme o tipo de serviço e o código sugerido (DE/AM/CO) na tela de pré-geração.",
+      "Salve. A proposta entra no Kanban já na coluna 'Reunião realizada' com o código definitivo.",
     ],
   },
   {
@@ -119,7 +121,18 @@ export const comercialHowTo: HowToItem[] = [
       "Aba 'Devis' → botão 'Nova proposta a partir de ata'.",
       "Faça o upload do arquivo da ata (texto, PDF ou imagem).",
       "Aguarde a IA analisar e sugerir cliente, escopo, valores e estrutura.",
-      "Revise tudo, confirme ou ajuste, e salve. A proposta já entra com os campos preenchidos.",
+      "O sistema abre a tela de confirmação de código: ele 'adivinha' o tipo de serviço (Advocacia, Ambiental ou Contábil) e mostra o próximo número sequencial. Ajuste se necessário.",
+      "Confirme. O rascunho é criado já com o código correto e aparece em 'Reunião realizada'.",
+    ],
+  },
+  {
+    id: "codigo-proposta",
+    question: "Como funciona o código da proposta (DE / AM / CO)?",
+    steps: [
+      "Cada tipo de serviço tem um prefixo: DE = Advocacia, AM = Ambiental, CO = Contábil.",
+      "O formato é {PREFIXO}{ANO}{MÊS}{SEQ3}, por exemplo DE202605003 = terceira proposta de Advocacia em maio/2026.",
+      "O código é definido na tela de pré-geração antes do rascunho existir e não pode ser alterado depois.",
+      "Se você criou com o prefixo errado, cancele a proposta e crie uma nova — a numeração avança automaticamente.",
     ],
   },
   {
@@ -129,7 +142,7 @@ export const comercialHowTo: HowToItem[] = [
       "Dentro de uma proposta aberta, role até o bloco 'Sugestões da IA'.",
       "Cada campo (tipo de serviço, setor, escopo, estrutura) tem um botão 'Aceitar'.",
       "Você pode editar o texto sugerido antes de aceitar.",
-      "Clique em 'Aceitar todas' para aplicar tudo de uma vez. Nada é salvo até você clicar em 'Salvar' no final.",
+      "Clique em 'Aceitar todas' para aplicar tudo de uma vez. Ao salvar, o card avança automaticamente para 'Proposta em geração'.",
     ],
   },
   {
@@ -137,8 +150,9 @@ export const comercialHowTo: HowToItem[] = [
     question: "Como marcar a proposta como pronta para envio?",
     steps: [
       "Dentro da proposta, abra o bloco 'Checklist de validação'.",
-      "Confirme as 5 verificações: dados do cliente conferidos, escopo claro, valores corretos, prazo viável, responsável definido.",
-      "Ao marcar todas, a proposta avança automaticamente para 'Pronta para envio' e o botão de envio é liberado.",
+      "Marque as 5 verificações: dados do cliente, escopo, valores, prazo e responsável.",
+      "Ao marcar a primeira, o card vai para 'Aguardando validação'. Ao marcar todas as 5, vai automaticamente para 'Pronta para envio' e o botão de envio é liberado.",
+      "Você não precisa arrastar o card — a progressão é automática.",
     ],
   },
   {
@@ -170,13 +184,23 @@ export const comercialHowTo: HowToItem[] = [
     ],
   },
   {
+    id: "operacao-auto",
+    question: "Como o serviço chega na Operação?",
+    steps: [
+      "No mesmo instante do aceite, o sistema cria automaticamente um registro na tabela de Serviços da Operação.",
+      "O serviço nasce com status 'a iniciar', herdando cliente, unidade de negócio, setor responsável, título e prazo do devis.",
+      "A equipe de Operação encontra o novo serviço no módulo Operação — não é preciso reenviar manualmente.",
+      "O card no Kanban Comercial vai para 'Enviado para operação' assim que a entrada é conciliada no Financeiro.",
+    ],
+  },
+  {
     id: "kanban",
     question: "O que cada coluna do Kanban significa e como mover cards?",
     steps: [
       "Cada coluna representa uma etapa do fluxo (veja o diagrama no topo desta página).",
       "Cards azuis: ainda em preparação interna. Âmbar: aguardando ação do cliente. Roxo: aceite confirmado, fluxo financeiro disparado. Verde: dinheiro entrou e operação começou.",
-      "Você pode arrastar um card manualmente quando precisar avançar uma etapa que não é automática (ex.: 'Entrada recebida' → 'Enviado para operação').",
-      "Etapas automáticas (envio, aceite, cobrança) não devem ser movidas à mão.",
+      "Cada coluna mostra cerca de 3 cards visíveis e tem scroll interno — role dentro da coluna para ver os demais.",
+      "A maioria das transições acontece automaticamente. Você só precisa arrastar manualmente em casos excepcionais (ex.: corrigir um card parado).",
     ],
   },
   {
@@ -196,9 +220,34 @@ export const comercialFAQ: FAQItem[] = [
     question: "Por que minha proposta não vai para 'Pronta para envio'?",
     answer: (
       <>
-        Provavelmente o checklist de validação ainda tem itens não marcados. Abra a proposta,
-        role até o bloco 'Checklist de validação' e confirme as 5 verificações. Sem todas
-        marcadas, o botão de envio fica desabilitado.
+        A progressão é automática, mas exige que <strong>todos os 5 itens</strong> do checklist
+        de validação estejam marcados. Abra a proposta, role até o bloco 'Checklist de
+        validação' e confirme as 5 verificações. Se faltar uma, o card fica em 'Aguardando
+        validação' e o botão de envio permanece desabilitado.
+      </>
+    ),
+  },
+  {
+    id: "codigo-fixo",
+    question: "Posso alterar o código (DE/AM/CO) de uma proposta depois de criada?",
+    answer: (
+      <>
+        Não. O código é definido e travado na tela de pré-geração, antes do rascunho existir,
+        para garantir rastreabilidade e evitar saltos na numeração sequencial. Se o prefixo
+        estiver errado, cancele a proposta e crie uma nova com o tipo de serviço correto — o
+        sistema continua a numeração sem deixar buracos.
+      </>
+    ),
+  },
+  {
+    id: "progressao-automatica",
+    question: "Por que o card mudou de coluna sozinho?",
+    answer: (
+      <>
+        É o comportamento esperado. O sistema move o card automaticamente quando a IA termina
+        de salvar sugestões (→ 'Proposta em geração'), quando você marca o primeiro item do
+        checklist (→ 'Aguardando validação') e quando todos os 5 itens são confirmados
+        (→ 'Pronta para envio'). Você só arrasta manualmente em casos excepcionais.
       </>
     ),
   },
@@ -234,6 +283,18 @@ export const comercialFAQ: FAQItem[] = [
         (1) atualize a página do Financeiro; (2) confirme se a proposta tem mesmo o status
         'Aceita' (não apenas 'Enviada'); (3) verifique se o valor total da proposta é maior
         que zero. Se nada disso resolver, avise o time técnico para rodar o reprocessamento.
+      </>
+    ),
+  },
+  {
+    id: "servico-operacao",
+    question: "O serviço aparece na Operação automaticamente?",
+    answer: (
+      <>
+        Sim. No instante do aceite, o sistema cria o registro em Serviços com status
+        'a iniciar', herdando cliente, unidade de negócio, setor responsável, título e prazo
+        do devis. Não é preciso enviar manualmente. Se a Operação não vir o serviço,
+        verifique se o devis está realmente com status 'Aceita'.
       </>
     ),
   },

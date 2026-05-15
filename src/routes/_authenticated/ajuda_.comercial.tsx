@@ -53,9 +53,10 @@ function AjudaComercial() {
         </p>
         <PipelineDiagram steps={comercialPipeline} />
         <HelpCallout variant="tip" title="Dica">
-          As etapas em <strong>roxo</strong> e <strong>verde</strong> são acionadas
-          automaticamente pelo sistema. Você só precisa mover cards no Kanban entre
-          'Entrada recebida' e 'Enviado para operação'.
+          A maior parte das transições é <strong>automática</strong>: a IA, o checklist de
+          validação, o aceite do cliente e a conciliação financeira movem os cards sozinhos.
+          Você raramente precisa arrastar — apenas em casos excepcionais para corrigir um
+          card parado.
         </HelpCallout>
       </section>
 
