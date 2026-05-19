@@ -8,14 +8,17 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { meeting_report, client_name, total_amount } = await req.json();
+    const { meeting_report, client_name, total_amount, language } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
     if (!meeting_report) throw new Error("meeting_report é obrigatório");
 
-    const systemPrompt = `Você é um assistente comercial brasileiro especializado em criar propostas comerciais (devis) de serviços. Gere uma proposta estruturada, formal e detalhada em português do Brasil baseada no relatório fornecido.`;
+    const lang = (["pt", "fr", "en", "es"].includes(language) ? language : "pt") as "pt" | "fr" | "en" | "es";
+    const langName = { pt: "português do Brasil", fr: "français", en: "English", es: "español" }[lang];
 
-    const userPrompt = `Relatório da reunião com o cliente${client_name ? ` "${client_name}"` : ""}:\n\n${meeting_report}\n\n${total_amount ? `Valor total alvo: R$ ${total_amount}\n\n` : ""}Gere a estrutura completa da proposta.`;
+    const systemPrompt = `Você é um assistente comercial multilíngue especializado em criar propostas comerciais (devis) de serviços. Gere uma proposta estruturada, formal e detalhada COMPLETAMENTE em ${langName}, sem misturar idiomas. Todos os campos textuais (title, scope_description, proposal_structure, scope_items[].title, scope_items[].description) devem estar 100% em ${langName}. Não traduza nomes próprios, valores monetários, datas, números ou siglas.`;
+
+    const userPrompt = `Relatório da reunião com o cliente${client_name ? ` "${client_name}"` : ""}:\n\n${meeting_report}\n\n${total_amount ? `Valor total alvo: R$ ${total_amount}\n\n` : ""}Gere a estrutura completa da proposta em ${langName}.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

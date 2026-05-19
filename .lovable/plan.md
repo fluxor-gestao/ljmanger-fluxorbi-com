@@ -1,79 +1,74 @@
-## Diagnóstico
+# Correção do idioma da proposta + botão de tradução na visualização
 
-Consultando o banco, identifiquei a causa exata do descompasso:
+## Problema observado
 
-| Devis | Aceito em | Cobrança pendente | Serviço vinculado |
-|---|---|---|---|
-| DE202605004 | 18/05 | ✅ 1 | ✅ 1 (status `concluido`) |
-| DE202605003 | 15/05 | ✅ 1 | ✅ 1 (`em_andamento`) |
-| **DE202605002** | 13/05 | ✅ 1 | ❌ **0** |
-| **DE202605001** | 12/05 | ✅ 1 | ❌ **0** |
-| DE202604003 | 30/04 | ✅ 1 | ✅ 1 (`em_andamento`) |
-| DE202604002 | 30/04 | ✅ 1 | ✅ 1 (`concluido`) |
-| DE202604001 | 24/04 | ✅ 1 | ✅ 1 (`em_andamento`) |
+Na imagem, a proposta gerada pela IA mistura **francês** (scope items: "Préparation d'une proposition…", "Inclusion d'une analyse…", "Julien Pluot s'est montré très intéressé…") com **português** (resumo da reunião, descrição do escopo, estrutura A/B/C/...). Isso ocorre porque:
 
-**Dois problemas concorrentes:**
+- `analyze-meeting-report/index.ts` (linha 18) instrui: *"Responda sempre em pt-BR nos campos textuais finais."*
+- Mas o modelo recebe a ata em francês e acaba copiando trechos literais (especialmente em `scope_items.description` e dentro de `proposal_structure`), gerando saída híbrida.
 
-1. **DE202605002 e DE202605001** foram aceitos *antes* da trigger `devis_accepted_create_service` existir → nunca geraram serviço na Operação. Aparecem em "Cobrança pendente" mas não em "Enviado para operação" nem na página `/operacao`.
-2. **DE202605004 e DE202604002** já têm serviço, mas com status `concluido`. A regra atual do Kanban só mostra na coluna "Enviado para operação" serviços `a_iniciar` ou `em_andamento` (linha em `DevisKanban.tsx`: `hasActiveSvc = svcs.some(s => s.status === "a_iniciar" || "em_andamento")`). Por isso somem da coluna mesmo continuando com cobrança pendente.
+Resultado: a proposta nasce sem um idioma "nativo" coerente.
 
-Resultado: contagens divergentes nas duas colunas.
+---
 
-## Solução
+## Parte 1 — Corrigir geração (idioma único e consistente)
 
-### 1. Backfill (migration de dados)
+### 1.1 Persistir o idioma da proposta
+Adicionar coluna `source_language` em `devis` (`text`, default `'pt'`, valores: `pt|fr|en|es`) via migration. Esse será o **idioma nativo** da proposta, definido no momento da geração e nunca alterado depois.
 
-Criar serviços faltantes para todo devis aceito sem `services` vinculado:
+### 1.2 Ajustar `analyze-meeting-report`
+- Trocar a instrução fixa "responda sempre em pt-BR" por: **"Gere TODOS os campos textuais (client.notes, meeting.summary/report, devis.title, devis.scope_description, devis.proposal_structure, devis.scope_items[].title/description) no MESMO idioma detectado em `detected_language`. Não misture idiomas. Não copie trechos literais da ata em outro idioma — reescreva tudo no idioma final escolhido."**
+- Reforçar no system prompt: *"A consistência de idioma é obrigatória. Se detectar francês, TODO texto em francês; se português, TODO em português."*
+- Manter `detected_language` no schema (já existe).
 
-```sql
-INSERT INTO public.services (devis_id, client_id, business_unit, responsible_sector,
-                             title, description, status, expected_end_date)
-SELECT d.id, d.client_id, d.business_unit, d.responsible_sector,
-       coalesce(d.title, 'Serviço — ' || coalesce(d.devis_number,'')),
-       d.scope_description, 'a_iniciar'::service_status, d.deadline_date
-FROM public.devis d
-WHERE d.accepted_at IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM public.services s WHERE s.devis_id = d.id);
-```
+### 1.3 Ajustar `generate-devis-proposal` (regeneração manual)
+- Aceitar parâmetro `language` (pt|fr|en|es) e gerar 100% no idioma pedido.
+- Atualizar o system prompt: remover "português do Brasil" fixo; usar o idioma recebido.
 
-Isso resolve DE202605002 e DE202605001 e blinda contra qualquer aceite anterior à trigger.
+### 1.4 Salvar o idioma ao criar o devis
+No fluxo `UploadAtaDialog` (onde a ata é processada e o devis é criado), gravar `source_language = payload.detected_language` ao inserir o registro.
 
-### 2. Ajuste de regra do Kanban (`src/components/devis/DevisKanban.tsx`)
+---
 
-Trocar o filtro de presença na coluna "Enviado para operação" de "serviço ativo" para "qualquer serviço vinculado":
+## Parte 2 — Botão "Traduzir para português" na visualização
 
-```ts
-// antes
-const hasActiveSvc = svcs.some((s) => s.status === "a_iniciar" || s.status === "em_andamento");
-if (hasActiveSvc) cols.push("enviado_para_operacao");
+### 2.1 UI
+Na página `src/routes/_authenticated/comercial_.devis.$id.tsx`, no topo (header com botões de ação), adicionar botão:
 
-// depois
-if (svcs.length > 0) cols.push("enviado_para_operacao");
-```
+- **Quando `devis.source_language !== 'pt'`** → mostrar botão `🌐 Traduzir para Português`.
+- **Quando ativo** → o botão vira `↩ Ver no idioma original (FR/EN/ES)`.
+- Estado local `viewLanguage: 'native' | 'pt'`, **não persiste** no banco — só afeta visualização.
 
-Justificativa: o sentido da coluna é "esta proposta foi encaminhada à Operação". Uma vez encaminhada, ela permanece visível no funil comercial até a baixa da cobrança — independente do progresso interno da Operação. Assim, **toda proposta com cobrança pendente também aparece em "Enviado para operação"** e as quantidades batem.
+### 2.2 Tradução
+Criar server function `translate-devis-view` (`src/lib/devis-translate.functions.ts`) usando `createServerFn` + Lovable AI Gateway (`google/gemini-2.5-flash`):
 
-Opcional (recomendado): exibir um pequeno badge de status do serviço (`a iniciar` / `em andamento` / `concluído`) dentro do card quando renderizado na coluna "Enviado para operação", para o comercial saber o estágio operacional sem sair do Kanban. Reutiliza `serviceStatusColors` já existente em `operacao.tsx`.
+- Input: campos textuais do devis + `target_language: 'pt'`.
+- Output: mesmos campos traduzidos, mantendo a estrutura (A/B/C…, itens 1/2/3, valores em R$, números, datas intactos).
+- Cache em memória por id+lang para evitar re-chamada ao alternar.
+- Loading state no botão (`Loader2`).
 
-### 3. Página Operação
+### 2.3 Render
+Quando `viewLanguage === 'pt'`, substituir nos campos exibidos (Tipo de serviço, Setor responsável, Descrição do escopo, Estrutura da proposta, Resumo da reunião, scope_items) pelos textos traduzidos. **Nada é gravado no banco.** O PDF e o envio por email continuam usando o idioma nativo.
 
-Nenhuma mudança de código necessária — `/operacao` já faz `select("*")` em `services` sem filtros, então os 2 serviços criados no backfill aparecem automaticamente, com status `a_iniciar`.
+### 2.4 Indicador visual
+Quando em modo traduzido, mostrar um badge discreto no topo: `"Visualização traduzida — idioma nativo: Francês"`.
 
-## Resultado esperado
-
-- "Cobrança pendente" e "Enviado para operação" passam a ter **exatamente o mesmo conjunto** de cards (7 hoje).
-- Os 2 devis órfãos (DE202605002, DE202605001) aparecem em `/operacao` para o time iniciar.
-- Triggers continuam garantindo paridade para todo aceite futuro.
-
-## Preservação visual
-
-Sem mudanças de paleta, tipografia, layout ou novos componentes. Apenas:
-- Uma linha de lógica em `DevisKanban.tsx`
-- (Opcional) Badge de status do serviço no card, usando tokens já existentes
+---
 
 ## Arquivos afetados
 
-- **Migration**: backfill SQL (uma só, sem alteração de schema)
-- **`src/components/devis/DevisKanban.tsx`**: filtro de `hasActiveSvc` → `svcs.length > 0`; opcional badge de status
+| Arquivo | Mudança |
+|---|---|
+| `supabase/migrations/*_devis_source_language.sql` | Nova coluna `devis.source_language` |
+| `supabase/functions/analyze-meeting-report/index.ts` | Prompt: idioma único consistente |
+| `supabase/functions/generate-devis-proposal/index.ts` | Aceitar `language`, gerar no idioma pedido |
+| `src/components/devis/UploadAtaDialog.tsx` | Gravar `source_language` na criação |
+| `src/lib/devis-translate.functions.ts` | **NOVO** — server function de tradução |
+| `src/routes/_authenticated/comercial_.devis.$id.tsx` | Botão de tradução + render condicional |
 
-Posso seguir com a implementação?
+## Detalhes técnicos
+
+- A tradução server-side usa Lovable AI Gateway (sem custo extra ao usuário, já configurado).
+- Backfill: devis antigos sem `source_language` assumem `'pt'` (default).
+- O PDF (`DevisPdfTemplate`) e o envio por email **NÃO** são afetados — sempre usam idioma nativo. Isso preserva a integridade legal da proposta.
+- A tradução é puramente cosmética/visual no painel interno.

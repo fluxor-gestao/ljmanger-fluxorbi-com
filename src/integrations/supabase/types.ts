@@ -354,6 +354,7 @@ export type Database = {
           scope_description: string | null
           sent_at: string | null
           service_type: string | null
+          source_language: string
           status: Database["public"]["Enums"]["devis_status"]
           title: string
           total_amount: number
@@ -395,6 +396,7 @@ export type Database = {
           scope_description?: string | null
           sent_at?: string | null
           service_type?: string | null
+          source_language?: string
           status?: Database["public"]["Enums"]["devis_status"]
           title: string
           total_amount?: number
@@ -436,6 +438,7 @@ export type Database = {
           scope_description?: string | null
           sent_at?: string | null
           service_type?: string | null
+          source_language?: string
           status?: Database["public"]["Enums"]["devis_status"]
           title?: string
           total_amount?: number

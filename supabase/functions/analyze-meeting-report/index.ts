@@ -13,9 +13,24 @@ Deno.serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
     if (!file_base64) throw new Error("file_base64 é obrigatório");
 
-    const langInstr = language_hint && language_hint !== "auto" ? `O idioma do documento é ${language_hint}.` : "Detecte automaticamente o idioma.";
+    const langInstr = language_hint && language_hint !== "auto" ? `O idioma do documento é ${language_hint} — use este idioma em toda a saída.` : "Detecte automaticamente o idioma do documento.";
 
-    const systemPrompt = `Você é um analista comercial. Receba uma ata de reunião e extraia: (1) idioma detectado, (2) dados do cliente, (3) resumo da reunião, (4) estrutura inicial da proposta comercial. Responda sempre em pt-BR nos campos textuais finais.`;
+    const systemPrompt = `Você é um analista comercial multilíngue.
+
+REGRA CRÍTICA DE IDIOMA (OBRIGATÓRIA):
+- Primeiro determine o idioma final (campo "detected_language": pt, fr, en ou es).
+- TODOS os campos textuais de saída devem estar 100% nesse mesmo idioma, sem exceção:
+  client.notes, meeting.summary, meeting.report, devis.title, devis.service_type,
+  devis.responsible_sector, devis.scope_description, devis.proposal_structure,
+  devis.scope_items[].title, devis.scope_items[].description.
+- NUNCA misture idiomas. NUNCA copie trechos literais da ata em outro idioma —
+  reescreva tudo no idioma final escolhido.
+- Se a ata estiver em francês, TODA a saída em francês. Se em português, TODA em português.
+  Se em inglês, TODA em inglês. Se em espanhol, TODA em espanhol.
+- Não traduza nomes próprios, valores monetários, datas, números ou siglas.
+
+Sua tarefa: extrair (1) idioma detectado, (2) dados do cliente, (3) resumo da reunião,
+(4) estrutura inicial da proposta comercial — respeitando estritamente a regra de idioma acima.`;
 
     const userContent: any[] = [
       { type: "text", text: `Analise esta ata${file_name ? ` (${file_name})` : ""}. ${langInstr}` },

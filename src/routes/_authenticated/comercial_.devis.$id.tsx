@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Save, X, CalendarIcon, Sparkles, Loader2, Link as LinkIcon, CheckCircle2, FileDown } from "lucide-react";
+import { ArrowLeft, Pencil, Save, X, CalendarIcon, Sparkles, Loader2, Link as LinkIcon, CheckCircle2, FileDown, Languages } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,9 @@ function DevisDetail() {
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestions | null>(null);
   const [generating, setGenerating] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [viewLang, setViewLang] = useState<"native" | "pt">("native");
+  const [translating, setTranslating] = useState(false);
+  const [translatedFields, setTranslatedFields] = useState<Record<string, string> | null>(null);
 
   const { data: devis, isLoading } = useQuery({
     queryKey: ["devis", id],
@@ -181,6 +184,49 @@ function DevisDetail() {
   if (isLoading || !form) return <div className="text-muted-foreground">Carregando...</div>;
   if (!devis) return <div className="text-muted-foreground">Devis não encontrado.</div>;
 
+  const sourceLang = (devis as any).source_language || "pt";
+  const LANG_LABELS: Record<string, string> = { pt: "Português", fr: "Francês", en: "Inglês", es: "Espanhol" };
+
+  const handleToggleTranslate = async () => {
+    if (viewLang === "pt") {
+      setViewLang("native");
+      return;
+    }
+    if (translatedFields) {
+      setViewLang("pt");
+      return;
+    }
+    setTranslating(true);
+    try {
+      const fields = {
+        title: devis.title || "",
+        service_type: devis.service_type || "",
+        responsible_sector: devis.responsible_sector || "",
+        scope_description: devis.scope_description || "",
+        proposal_structure: devis.proposal_structure || "",
+        meeting_summary: devis.meeting_summary || "",
+        meeting_report: devis.meeting_report || "",
+        notes: devis.notes || "",
+      };
+      const { data, error } = await supabase.functions.invoke("translate-devis", {
+        body: { fields, target_language: "pt", source_language: sourceLang },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setTranslatedFields(data.translated);
+      setViewLang("pt");
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao traduzir");
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const view = (key: string, fallback: string) => {
+    if (viewLang === "pt" && translatedFields && translatedFields[key]) return translatedFields[key];
+    return fallback;
+  };
+
   const client = clientsById[devis.client_id ?? ""];
   const responsavel = profilesById[devis.commercial_responsible ?? ""];
 
@@ -210,6 +256,19 @@ function DevisDetail() {
             </>
           ) : (
             <>
+              {sourceLang !== "pt" && (
+                <Button
+                  variant={viewLang === "pt" ? "default" : "outline"}
+                  onClick={handleToggleTranslate}
+                  disabled={translating}
+                  title={`Idioma nativo: ${LANG_LABELS[sourceLang] || sourceLang}`}
+                >
+                  {translating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Languages className="h-4 w-4 mr-2" />}
+                  {viewLang === "pt"
+                    ? `Ver no original (${LANG_LABELS[sourceLang] || sourceLang})`
+                    : "Traduzir para Português"}
+                </Button>
+              )}
               {devis.validated_at && (
                 <Button
                   variant="outline"
@@ -236,6 +295,16 @@ function DevisDetail() {
           )}
         </div>
       </div>
+
+      {viewLang === "pt" && sourceLang !== "pt" && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 flex items-center gap-2 text-sm">
+          <Languages className="h-4 w-4 text-amber-600" />
+          <span className="text-amber-700 dark:text-amber-400">
+            Visualização traduzida — idioma nativo da proposta: <strong>{LANG_LABELS[sourceLang] || sourceLang}</strong>. O PDF e o envio ao cliente usam sempre o idioma original.
+          </span>
+        </div>
+      )}
+
 
       {devis.accepted_at && (
         <div className="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 flex items-center gap-3">
@@ -385,7 +454,7 @@ function DevisDetail() {
             <Label>Título</Label>
             {editing ? (
               <Input value={form.title ?? ""} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            ) : <p className="font-medium mt-1">{(devis?.title ?? "")}</p>}
+            ) : <p className="font-medium mt-1">{view("title", devis?.title ?? "")}</p>}
           </div>
 
           {/* Relatório da reunião */}
@@ -403,7 +472,7 @@ function DevisDetail() {
                   {generating ? "Gerando..." : "Gerar proposta automaticamente"}
                 </Button>
               </div>
-            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{devis.meeting_report || "—"}</p>}
+            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("meeting_report", devis.meeting_report || "—")}</p>}
           </div>
 
           {/* Resumo */}
@@ -411,7 +480,7 @@ function DevisDetail() {
             <Label>Resumo da reunião</Label>
             {editing ? (
               <Textarea rows={4} value={form.meeting_summary ?? ""} onChange={(e) => setForm({ ...form, meeting_summary: e.target.value })} />
-            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{devis.meeting_summary || "—"}</p>}
+            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("meeting_summary", devis.meeting_summary || "—")}</p>}
           </div>
 
           {/* Observações */}
@@ -419,7 +488,7 @@ function DevisDetail() {
             <Label>Observações</Label>
             {editing ? (
               <Textarea rows={3} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{devis.notes || "—"}</p>}
+            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("notes", devis.notes || "—")}</p>}
           </div>
 
           {/* Campos da proposta — editáveis */}
@@ -435,10 +504,10 @@ function DevisDetail() {
           {/* Campos da proposta — somente leitura */}
           {!editing && (devis.service_type || devis.responsible_sector || devis.scope_description || devis.proposal_structure) && (
             <>
-              {devis.service_type && <div className="md:col-span-2"><Label>Tipo de serviço</Label><p className="font-medium mt-1">{devis.service_type}</p></div>}
-              {devis.responsible_sector && <div className="md:col-span-2"><Label>Setor responsável</Label><p className="font-medium mt-1">{devis.responsible_sector}</p></div>}
-              {devis.scope_description && <div className="md:col-span-2"><Label>Descrição do escopo</Label><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{devis.scope_description}</p></div>}
-              {devis.proposal_structure && <div className="md:col-span-2"><Label>Estrutura da proposta</Label><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{devis.proposal_structure}</p></div>}
+              {devis.service_type && <div className="md:col-span-2"><Label>Tipo de serviço</Label><p className="font-medium mt-1">{view("service_type", devis.service_type)}</p></div>}
+              {devis.responsible_sector && <div className="md:col-span-2"><Label>Setor responsável</Label><p className="font-medium mt-1">{view("responsible_sector", devis.responsible_sector)}</p></div>}
+              {devis.scope_description && <div className="md:col-span-2"><Label>Descrição do escopo</Label><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("scope_description", devis.scope_description)}</p></div>}
+              {devis.proposal_structure && <div className="md:col-span-2"><Label>Estrutura da proposta</Label><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("proposal_structure", devis.proposal_structure)}</p></div>}
             </>
           )}
         </CardContent>

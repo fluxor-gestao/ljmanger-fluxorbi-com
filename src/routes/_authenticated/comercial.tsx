@@ -56,6 +56,7 @@ type DevisForm = {
   title: string;
   devis_number: string;
   service_type: string;
+  source_language: string;
 };
 
 const emptyDevis: DevisForm = {
@@ -71,6 +72,7 @@ const emptyDevis: DevisForm = {
   title: "",
   devis_number: "",
   service_type: "",
+  source_language: "pt",
 };
 
 function Comercial() {
@@ -256,6 +258,7 @@ function Comercial() {
         responsible_sector: aiAccepted.responsible_sector || null,
         scope_description: aiAccepted.scope_description || null,
         proposal_structure: aiAccepted.proposal_structure || null,
+        source_language: form.source_language || "pt",
       });
       if (error) throw error;
     },
@@ -320,6 +323,7 @@ function Comercial() {
       title: payload.devis.title || "",
       devis_number,
       service_type,
+      source_language: payload.detected_language || "pt",
     });
     setAiAccepted({
       service_type: payload.devis.service_type || service_type,
