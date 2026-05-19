@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.accept-devis-proposal]
 verify_jwt = false
+
+[functions.translate-devis]
+verify_jwt = true
