@@ -296,6 +296,16 @@ function DevisDetail() {
         </div>
       </div>
 
+      {viewLang === "pt" && sourceLang !== "pt" && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 flex items-center gap-2 text-sm">
+          <Languages className="h-4 w-4 text-amber-600" />
+          <span className="text-amber-700 dark:text-amber-400">
+            Visualização traduzida — idioma nativo da proposta: <strong>{LANG_LABELS[sourceLang] || sourceLang}</strong>. O PDF e o envio ao cliente usam sempre o idioma original.
+          </span>
+        </div>
+      )}
+
+
       {devis.accepted_at && (
         <div className="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-green-600" />
