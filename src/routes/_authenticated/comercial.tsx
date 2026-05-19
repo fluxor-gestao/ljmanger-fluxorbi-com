@@ -258,6 +258,7 @@ function Comercial() {
         responsible_sector: aiAccepted.responsible_sector || null,
         scope_description: aiAccepted.scope_description || null,
         proposal_structure: aiAccepted.proposal_structure || null,
+        source_language: form.source_language || "pt",
       });
       if (error) throw error;
     },
