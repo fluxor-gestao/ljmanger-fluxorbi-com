@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Save, X, CalendarIcon, Sparkles, Loader2, Link as LinkIcon, CheckCircle2, FileDown } from "lucide-react";
+import { ArrowLeft, Pencil, Save, X, CalendarIcon, Sparkles, Loader2, Link as LinkIcon, CheckCircle2, FileDown, Languages } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
