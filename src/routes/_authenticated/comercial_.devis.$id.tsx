@@ -480,7 +480,7 @@ function DevisDetail() {
             <Label>Resumo da reunião</Label>
             {editing ? (
               <Textarea rows={4} value={form.meeting_summary ?? ""} onChange={(e) => setForm({ ...form, meeting_summary: e.target.value })} />
-            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{devis.meeting_summary || "—"}</p>}
+            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("meeting_summary", devis.meeting_summary || "—")}</p>}
           </div>
 
           {/* Observações */}
