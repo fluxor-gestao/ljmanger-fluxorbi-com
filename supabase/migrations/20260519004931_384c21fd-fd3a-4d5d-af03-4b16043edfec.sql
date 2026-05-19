@@ -1,0 +1,1 @@
+ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS source_language text NOT NULL DEFAULT 'pt';
