@@ -256,19 +256,17 @@ function DevisDetail() {
             </>
           ) : (
             <>
-              {sourceLang !== "pt" && (
-                <Button
-                  variant={viewLang === "pt" ? "default" : "outline"}
-                  onClick={handleToggleTranslate}
-                  disabled={translating}
-                  title={`Idioma nativo: ${LANG_LABELS[sourceLang] || sourceLang}`}
-                >
-                  {translating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Languages className="h-4 w-4 mr-2" />}
-                  {viewLang === "pt"
-                    ? `Ver no original (${LANG_LABELS[sourceLang] || sourceLang})`
-                    : "Traduzir para Português"}
-                </Button>
-              )}
+              <Button
+                variant={viewLang === "pt" ? "default" : "outline"}
+                onClick={handleToggleTranslate}
+                disabled={translating}
+                title={`Idioma nativo: ${LANG_LABELS[sourceLang] || sourceLang}`}
+              >
+                {translating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Languages className="h-4 w-4 mr-2" />}
+                {viewLang === "pt"
+                  ? `Ver no original (${LANG_LABELS[sourceLang] || sourceLang})`
+                  : "Traduzir para Português"}
+              </Button>
               {devis.validated_at && (
                 <Button
                   variant="outline"
