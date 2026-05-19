@@ -488,7 +488,7 @@ function DevisDetail() {
             <Label>Observações</Label>
             {editing ? (
               <Textarea rows={3} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{devis.notes || "—"}</p>}
+            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("notes", devis.notes || "—")}</p>}
           </div>
 
           {/* Campos da proposta — editáveis */}
