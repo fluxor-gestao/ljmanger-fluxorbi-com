@@ -38,6 +38,9 @@ function DevisDetail() {
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestions | null>(null);
   const [generating, setGenerating] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [viewLang, setViewLang] = useState<"native" | "pt">("native");
+  const [translating, setTranslating] = useState(false);
+  const [translatedFields, setTranslatedFields] = useState<Record<string, string> | null>(null);
 
   const { data: devis, isLoading } = useQuery({
     queryKey: ["devis", id],
