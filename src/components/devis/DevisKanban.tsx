@@ -75,8 +75,9 @@ function getColumnsForDevis(
   if (hasConciliada) cols.push("entrada_recebida");
 
   const svcs = svcByDevis[devis.id] ?? [];
-  const hasActiveSvc = svcs.some((s) => s.status === "a_iniciar" || s.status === "em_andamento");
-  if (hasActiveSvc) cols.push("enviado_para_operacao");
+  // Toda proposta aceita com serviço vinculado permanece visível em "Enviado para operação"
+  // (independente do status interno da Operação) para manter paridade com "Cobrança pendente".
+  if (svcs.length > 0) cols.push("enviado_para_operacao");
 
   return cols;
 }
