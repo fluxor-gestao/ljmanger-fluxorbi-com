@@ -184,6 +184,49 @@ function DevisDetail() {
   if (isLoading || !form) return <div className="text-muted-foreground">Carregando...</div>;
   if (!devis) return <div className="text-muted-foreground">Devis não encontrado.</div>;
 
+  const sourceLang = (devis as any).source_language || "pt";
+  const LANG_LABELS: Record<string, string> = { pt: "Português", fr: "Francês", en: "Inglês", es: "Espanhol" };
+
+  const handleToggleTranslate = async () => {
+    if (viewLang === "pt") {
+      setViewLang("native");
+      return;
+    }
+    if (translatedFields) {
+      setViewLang("pt");
+      return;
+    }
+    setTranslating(true);
+    try {
+      const fields = {
+        title: devis.title || "",
+        service_type: devis.service_type || "",
+        responsible_sector: devis.responsible_sector || "",
+        scope_description: devis.scope_description || "",
+        proposal_structure: devis.proposal_structure || "",
+        meeting_summary: devis.meeting_summary || "",
+        meeting_report: devis.meeting_report || "",
+        notes: devis.notes || "",
+      };
+      const { data, error } = await supabase.functions.invoke("translate-devis", {
+        body: { fields, target_language: "pt", source_language: sourceLang },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setTranslatedFields(data.translated);
+      setViewLang("pt");
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao traduzir");
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const view = (key: string, fallback: string) => {
+    if (viewLang === "pt" && translatedFields && translatedFields[key]) return translatedFields[key];
+    return fallback;
+  };
+
   const client = clientsById[devis.client_id ?? ""];
   const responsavel = profilesById[devis.commercial_responsible ?? ""];
 
