@@ -322,6 +322,7 @@ function Comercial() {
       title: payload.devis.title || "",
       devis_number,
       service_type,
+      source_language: payload.detected_language || "pt",
     });
     setAiAccepted({
       service_type: payload.devis.service_type || service_type,
