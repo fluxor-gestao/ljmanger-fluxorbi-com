@@ -454,7 +454,7 @@ function DevisDetail() {
             <Label>Título</Label>
             {editing ? (
               <Input value={form.title ?? ""} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            ) : <p className="font-medium mt-1">{(devis?.title ?? "")}</p>}
+            ) : <p className="font-medium mt-1">{view("title", devis?.title ?? "")}</p>}
           </div>
 
           {/* Relatório da reunião */}
