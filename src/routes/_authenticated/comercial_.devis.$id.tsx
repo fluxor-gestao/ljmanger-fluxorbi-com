@@ -504,10 +504,10 @@ function DevisDetail() {
           {/* Campos da proposta — somente leitura */}
           {!editing && (devis.service_type || devis.responsible_sector || devis.scope_description || devis.proposal_structure) && (
             <>
-              {devis.service_type && <div className="md:col-span-2"><Label>Tipo de serviço</Label><p className="font-medium mt-1">{devis.service_type}</p></div>}
-              {devis.responsible_sector && <div className="md:col-span-2"><Label>Setor responsável</Label><p className="font-medium mt-1">{devis.responsible_sector}</p></div>}
-              {devis.scope_description && <div className="md:col-span-2"><Label>Descrição do escopo</Label><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{devis.scope_description}</p></div>}
-              {devis.proposal_structure && <div className="md:col-span-2"><Label>Estrutura da proposta</Label><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{devis.proposal_structure}</p></div>}
+              {devis.service_type && <div className="md:col-span-2"><Label>Tipo de serviço</Label><p className="font-medium mt-1">{view("service_type", devis.service_type)}</p></div>}
+              {devis.responsible_sector && <div className="md:col-span-2"><Label>Setor responsável</Label><p className="font-medium mt-1">{view("responsible_sector", devis.responsible_sector)}</p></div>}
+              {devis.scope_description && <div className="md:col-span-2"><Label>Descrição do escopo</Label><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("scope_description", devis.scope_description)}</p></div>}
+              {devis.proposal_structure && <div className="md:col-span-2"><Label>Estrutura da proposta</Label><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("proposal_structure", devis.proposal_structure)}</p></div>}
             </>
           )}
         </CardContent>
