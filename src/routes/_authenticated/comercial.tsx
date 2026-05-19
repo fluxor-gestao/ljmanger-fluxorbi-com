@@ -72,6 +72,7 @@ const emptyDevis: DevisForm = {
   title: "",
   devis_number: "",
   service_type: "",
+  source_language: "pt",
 };
 
 function Comercial() {
