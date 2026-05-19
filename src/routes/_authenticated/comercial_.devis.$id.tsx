@@ -472,7 +472,7 @@ function DevisDetail() {
                   {generating ? "Gerando..." : "Gerar proposta automaticamente"}
                 </Button>
               </div>
-            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{devis.meeting_report || "—"}</p>}
+            ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("meeting_report", devis.meeting_report || "—")}</p>}
           </div>
 
           {/* Resumo */}
