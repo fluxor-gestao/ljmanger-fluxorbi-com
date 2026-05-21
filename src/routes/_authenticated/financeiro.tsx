@@ -17,6 +17,10 @@ import {
   ArrowLeft, Wallet, TrendingUp, CheckCircle2, CircleDashed,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { FxTicker } from "@/components/financeiro/FxTicker";
+import { CurrencyCell } from "@/components/financeiro/CurrencyCell";
+import { RateCell } from "@/components/financeiro/RateCell";
+import { CurrencySummary } from "@/components/financeiro/CurrencySummary";
 
 const statusColors: Record<string, string> = {
   pendente: "bg-warning/15 text-warning border-warning/30",
@@ -51,6 +55,11 @@ type Entry = {
   document_reference: string | null;
   bank_account_id: string | null;
   transfer_pair_id: string | null;
+  currency: string;
+  exchange_rate: number;
+  original_amount: number | null;
+  total_brl: number | null;
+  fx_status: string | null;
 };
 
 type BankAccount = {
