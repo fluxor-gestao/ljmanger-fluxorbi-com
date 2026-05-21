@@ -467,19 +467,50 @@ function Conciliacao() {
       const stmtAmt = Math.abs(Number(stmt.amount));
       const feAmount = stmtDir === "entrada" ? Number(fe.amount_in) : Number(fe.amount_out);
       const feHasOpposite = stmtDir === "entrada" ? Number(fe.amount_out) > 0 : Number(fe.amount_in) > 0;
-      const amountDiff = Math.abs(feAmount - stmtAmt);
-      if (feHasOpposite || feAmount === 0 || amountDiff >= 0.01) {
+
+      // FX comparison: bank value (BRL) vs total_brl expected
+      const feCurrency: string = fe.currency || "BRL";
+      const feOriginal = Number(fe.original_amount ?? feAmount ?? 0);
+      const expectedBrl = Number(fe.total_brl ?? feAmount ?? 0);
+      const brlDiff = Math.abs(stmtAmt - expectedBrl);
+      const isFxEntry = feCurrency !== "BRL";
+
+      const feUpdate: { conciliation_status: "conciliado"; exchange_rate?: number; total_brl?: number; fx_variation?: number; fx_status?: string } = {
+        conciliation_status: "conciliado" as const,
+      };
+
+      if (feHasOpposite || feAmount === 0) {
         const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
         const sideLabel = stmtDir === "entrada" ? "entrada" : "saída";
         const feSide = Number(fe.amount_in) > 0 ? "entrada" : "saída";
         const ok = window.confirm(
-          `Divergência detectada:\n\n` +
+          `Divergência de direção detectada:\n\n` +
             `• Banco: ${sideLabel} de ${fmt(stmtAmt)}\n` +
-            `• Lançamento interno: ${feSide} de ${fmt(Number(fe.amount_in) || Number(fe.amount_out))}\n\n` +
+            `• Lançamento interno: ${feSide}\n\n` +
             `Conciliar mesmo assim?`,
         );
         if (!ok) throw new Error("Conciliação cancelada por divergência.");
+      } else if (brlDiff >= 0.01) {
+        if (isFxEntry && feOriginal > 0) {
+          // Variação cambial: recalcula taxa, marca status especial
+          const newRate = stmtAmt / feOriginal;
+          feUpdate.exchange_rate = Number(newRate.toFixed(6));
+          feUpdate.total_brl = stmtAmt;
+          feUpdate.fx_variation = stmtAmt - expectedBrl;
+          feUpdate.fx_status = "com_variacao_cambial";
+          toast.info(`Variação cambial registrada (taxa ${newRate.toFixed(4)})`);
+        } else {
+          const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+          const ok = window.confirm(
+            `Divergência de valor detectada:\n\n` +
+              `• Banco: ${fmt(stmtAmt)}\n` +
+              `• Previsto (BRL): ${fmt(expectedBrl)}\n\n` +
+              `Conciliar mesmo assim?`,
+          );
+          if (!ok) throw new Error("Conciliação cancelada por divergência.");
+        }
       }
+
       let matchId = existingMatchId;
       if (!matchId) {
         const { data, error } = await supabase
@@ -510,7 +541,7 @@ function Conciliacao() {
         if (error) throw error;
       }
       await supabase.from("bank_statement_entries").update({ conciliation_status: "conciliado" as const }).eq("id", stmt.id);
-      await supabase.from("financial_entries").update({ conciliation_status: "conciliado" as const }).eq("id", fe.id);
+      await supabase.from("financial_entries").update(feUpdate).eq("id", fe.id);
     },
     onSuccess: () => {
       toast.success("Conciliado!");
