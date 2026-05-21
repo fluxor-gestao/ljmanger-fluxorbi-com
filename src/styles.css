@@ -123,3 +123,11 @@
     font-family: 'Space Grotesk', sans-serif;
   }
 }
+
+@keyframes fx-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-fx-marquee {
+  animation: fx-marquee 45s linear infinite;
+}
