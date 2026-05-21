@@ -422,6 +422,9 @@ function Financeiro() {
         <SummaryCard icon={<CheckCircle2 className="h-5 w-5 text-success" />} label="Disponível Atual" value={fmt(metrics.disponivel)} />
       </div>
 
+      {/* Ticker de cotações */}
+      <FxTicker />
+
       {/* Filtros */}
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[220px]">
