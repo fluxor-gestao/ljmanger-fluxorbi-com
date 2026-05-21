@@ -560,16 +560,22 @@ export type Database = {
           conciliation_status: Database["public"]["Enums"]["conciliation_status"]
           counterparty_name: string | null
           created_at: string
+          currency: string
           document_reference: string | null
           entry_date: string
           entry_type: Database["public"]["Enums"]["entry_type"] | null
+          exchange_rate: number
+          fx_status: string | null
+          fx_variation: number | null
           id: string
           import_batch_id: string | null
           movement_account: string | null
           movement_description: string | null
+          original_amount: number | null
           source_file_name: string | null
           source_sheet_name: string | null
           source_type: Database["public"]["Enums"]["source_type"]
+          total_brl: number | null
           transfer_pair_id: string | null
           updated_at: string
           user_id: string | null
@@ -585,16 +591,22 @@ export type Database = {
           conciliation_status?: Database["public"]["Enums"]["conciliation_status"]
           counterparty_name?: string | null
           created_at?: string
+          currency?: string
           document_reference?: string | null
           entry_date: string
           entry_type?: Database["public"]["Enums"]["entry_type"] | null
+          exchange_rate?: number
+          fx_status?: string | null
+          fx_variation?: number | null
           id?: string
           import_batch_id?: string | null
           movement_account?: string | null
           movement_description?: string | null
+          original_amount?: number | null
           source_file_name?: string | null
           source_sheet_name?: string | null
           source_type?: Database["public"]["Enums"]["source_type"]
+          total_brl?: number | null
           transfer_pair_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -610,16 +622,22 @@ export type Database = {
           conciliation_status?: Database["public"]["Enums"]["conciliation_status"]
           counterparty_name?: string | null
           created_at?: string
+          currency?: string
           document_reference?: string | null
           entry_date?: string
           entry_type?: Database["public"]["Enums"]["entry_type"] | null
+          exchange_rate?: number
+          fx_status?: string | null
+          fx_variation?: number | null
           id?: string
           import_batch_id?: string | null
           movement_account?: string | null
           movement_description?: string | null
+          original_amount?: number | null
           source_file_name?: string | null
           source_sheet_name?: string | null
           source_type?: Database["public"]["Enums"]["source_type"]
+          total_brl?: number | null
           transfer_pair_id?: string | null
           updated_at?: string
           user_id?: string | null
