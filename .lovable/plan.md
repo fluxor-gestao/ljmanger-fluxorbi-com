@@ -1,74 +1,91 @@
-# Correção do idioma da proposta + botão de tradução na visualização
 
-## Problema observado
+# Multi-moeda no Financeiro (sem redesenhar a tela)
 
-Na imagem, a proposta gerada pela IA mistura **francês** (scope items: "Préparation d'une proposition…", "Inclusion d'une analyse…", "Julien Pluot s'est montré très intéressé…") com **português** (resumo da reunião, descrição do escopo, estrutura A/B/C/...). Isso ocorre porque:
+Mantém 100% do layout, sidebar, cards, tabela e fluxo atuais. Apenas adiciona campos, 3 colunas, painel de resumo, ticker de cotações e validação cambial na conciliação. **O Comercial não é alterado em nada.**
 
-- `analyze-meeting-report/index.ts` (linha 18) instrui: *"Responda sempre em pt-BR nos campos textuais finais."*
-- Mas o modelo recebe a ata em francês e acaba copiando trechos literais (especialmente em `scope_items.description` e dentro de `proposal_structure`), gerando saída híbrida.
+## 1. Banco de dados (migration)
 
-Resultado: a proposta nasce sem um idioma "nativo" coerente.
+Adicionar em `financial_entries`:
+- `currency` text not null default `'BRL'` — check em (`BRL`,`USD`,`EUR`,`GBP`,`CAD`,`CHF`)
+- `exchange_rate` numeric not null default `1`
+- `original_amount` numeric — valor na moeda original
+- `total_brl` numeric — `original_amount * exchange_rate` (recalculado via trigger; conciliação pode sobrescrever)
+- `fx_variation` numeric — diferença entre BRL previsto e realizado
+- `fx_status` text — `null` | `'sem_variacao'` | `'com_variacao_cambial'`
 
----
+Trigger:
+- Em INSERT/UPDATE recalcular `total_brl = original_amount * exchange_rate` quando `original_amount` ou `exchange_rate` mudam (e `fx_status` não for `'com_variacao_cambial'`).
 
-## Parte 1 — Corrigir geração (idioma único e consistente)
+Backfill: `currency='BRL'`, `exchange_rate=1`, `original_amount = coalesce(amount_in,amount_out)`, `total_brl = original_amount`.
 
-### 1.1 Persistir o idioma da proposta
-Adicionar coluna `source_language` em `devis` (`text`, default `'pt'`, valores: `pt|fr|en|es`) via migration. Esse será o **idioma nativo** da proposta, definido no momento da geração e nunca alterado depois.
+**Sem alterações em `devis` nem em `create_devis_initial_charge`** — lançamentos vindos do Comercial nascem em BRL (default) e o Financeiro reclassifica depois.
 
-### 1.2 Ajustar `analyze-meeting-report`
-- Trocar a instrução fixa "responda sempre em pt-BR" por: **"Gere TODOS os campos textuais (client.notes, meeting.summary/report, devis.title, devis.scope_description, devis.proposal_structure, devis.scope_items[].title/description) no MESMO idioma detectado em `detected_language`. Não misture idiomas. Não copie trechos literais da ata em outro idioma — reescreva tudo no idioma final escolhido."**
-- Reforçar no system prompt: *"A consistência de idioma é obrigatória. Se detectar francês, TODO texto em francês; se português, TODO em português."*
-- Manter `detected_language` no schema (já existe).
+## 2. Comercial — NÃO alterar
 
-### 1.3 Ajustar `generate-devis-proposal` (regeneração manual)
-- Aceitar parâmetro `language` (pt|fr|en|es) e gerar 100% no idioma pedido.
-- Atualizar o system prompt: remover "português do Brasil" fixo; usar o idioma recebido.
+Nenhuma mudança. Devis continua como está hoje, lançamentos chegam ao Financeiro em BRL/taxa 1.
 
-### 1.4 Salvar o idioma ao criar o devis
-No fluxo `UploadAtaDialog` (onde a ata é processada e o devis é criado), gravar `source_language = payload.detected_language` ao inserir o registro.
+## 3. Tela Financeira — colunas novas (com edição inline)
 
----
+Em `src/routes/_authenticated/financeiro.tsx`, na tabela existente, **inserir entre Entrada e Saída**:
 
-## Parte 2 — Botão "Traduzir para português" na visualização
+- **Moeda** — célula com `Select` compacto (BRL/USD/EUR/GBP/CAD/CHF). Ao trocar:
+  - se for ≠ BRL e `exchange_rate=1`, sugere automaticamente a cotação atual do ticker (`useFxRates`) — usuário pode ajustar.
+  - dispara `UPDATE financial_entries SET currency=…, exchange_rate=…`.
+- **Taxa de Câmbio** — célula clicável que vira input numérico (formato pt-BR, 4 casas). Desabilitada quando moeda = BRL (fixa em 1,0000).
+- **Valor Total** — somente leitura, formatado em BRL (`total_brl`).
 
-### 2.1 UI
-Na página `src/routes/_authenticated/comercial_.devis.$id.tsx`, no topo (header com botões de ação), adicionar botão:
+Estilo idêntico ao restante da tabela (mesmos `TableHead/TableCell`, mesmos paddings). Edição usa `onBlur` + `useMutation` + `invalidateQueries`.
 
-- **Quando `devis.source_language !== 'pt'`** → mostrar botão `🌐 Traduzir para Português`.
-- **Quando ativo** → o botão vira `↩ Ver no idioma original (FR/EN/ES)`.
-- Estado local `viewLanguage: 'native' | 'pt'`, **não persiste** no banco — só afeta visualização.
+Permissão: apenas perfis `admin`/`financeiro` (já é o caso da policy atual).
 
-### 2.2 Tradução
-Criar server function `translate-devis-view` (`src/lib/devis-translate.functions.ts`) usando `createServerFn` + Lovable AI Gateway (`google/gemini-2.5-flash`):
+## 4. Ticker de cotações (acima da tabela, ao lado dos filtros)
 
-- Input: campos textuais do devis + `target_language: 'pt'`.
-- Output: mesmos campos traduzidos, mantendo a estrutura (A/B/C…, itens 1/2/3, valores em R$, números, datas intactos).
-- Cache em memória por id+lang para evitar re-chamada ao alternar.
-- Loading state no botão (`Loader2`).
+Novo componente `src/components/financeiro/FxTicker.tsx`:
+- Faixa fina (h-8), `overflow-hidden`, animação CSS `@keyframes marquee` lenta (~40s).
+- Fetch `https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,GBP-BRL,CAD-BRL,CHF-BRL` via `useQuery` (refetch 60s).
+- Item: `MOEDA/BRL  valor  ▲/▼  ±%  hh:mm`.
+- Cores: `text-success` alta, `text-destructive` baixa.
+- Inserido na faixa horizontal dos filtros existentes, sem deslocar nada.
 
-### 2.3 Render
-Quando `viewLanguage === 'pt'`, substituir nos campos exibidos (Tipo de serviço, Setor responsável, Descrição do escopo, Estrutura da proposta, Resumo da reunião, scope_items) pelos textos traduzidos. **Nada é gravado no banco.** O PDF e o envio por email continuam usando o idioma nativo.
+Hook `useFxRates()` exposto para reuso (usado pelo select de moeda para sugerir taxa).
 
-### 2.4 Indicador visual
-Quando em modo traduzido, mostrar um badge discreto no topo: `"Visualização traduzida — idioma nativo: Francês"`.
+## 5. Rodapé da tabela — botão "Ver resumo por moeda"
 
----
+Mantém os totais atuais. Adiciona botão `outline` ao lado. Ao clicar abre `Popover` compacto:
 
-## Arquivos afetados
+```
+EUR  Entradas: € 8.000   Saídas: € 1.000   Total BRL: R$ 43.200
+USD  Entradas: $ 5.000   Saídas: $ 2.000   Total BRL: R$ 16.500
+BRL  Entradas: R$ 2.000  Saídas: R$ 500    Total BRL: R$ 1.500
+```
+
+Agregação client-side por `currency`: soma `original_amount` (entradas/saídas) e `total_brl`.
+
+## 6. Conciliação Bancária — variação cambial
+
+Em `conciliacao.tsx`, no fluxo de confirmação de match:
+- Comparar `bank_statement_entry.amount` (BRL recebido) com `financial_entry.total_brl` (previsto).
+- Se diferença > 0.01 **e** `currency != 'BRL'`: recalcular `exchange_rate = bank_amount / original_amount`, gravar `total_brl = bank_amount`, `fx_variation = bank_amount - total_brl_previsto`, `fx_status='com_variacao_cambial'`.
+- Badge `"Conciliado com variação cambial"` (cor warning) na linha — **não** marcar como divergente.
+- Moeda = BRL com valores diferentes → mantém fluxo atual de `divergente`.
+
+## 7. Arquivos afetados
 
 | Arquivo | Mudança |
 |---|---|
-| `supabase/migrations/*_devis_source_language.sql` | Nova coluna `devis.source_language` |
-| `supabase/functions/analyze-meeting-report/index.ts` | Prompt: idioma único consistente |
-| `supabase/functions/generate-devis-proposal/index.ts` | Aceitar `language`, gerar no idioma pedido |
-| `src/components/devis/UploadAtaDialog.tsx` | Gravar `source_language` na criação |
-| `src/lib/devis-translate.functions.ts` | **NOVO** — server function de tradução |
-| `src/routes/_authenticated/comercial_.devis.$id.tsx` | Botão de tradução + render condicional |
+| `supabase/migrations/*_fx_support.sql` | colunas + trigger |
+| `src/routes/_authenticated/financeiro.tsx` | 3 colunas editáveis + ticker + botão resumo |
+| `src/routes/_authenticated/conciliacao.tsx` | lógica de variação cambial no match |
+| `src/components/financeiro/FxTicker.tsx` | **NOVO** ticker |
+| `src/components/financeiro/CurrencyCell.tsx` | **NOVO** célula Moeda (select inline) |
+| `src/components/financeiro/RateCell.tsx` | **NOVO** célula Taxa (input inline) |
+| `src/components/financeiro/CurrencySummary.tsx` | **NOVO** popover resumo |
+| `src/hooks/useFxRates.ts` | **NOVO** fetch AwesomeAPI |
+| `src/styles.css` | keyframes marquee |
 
-## Detalhes técnicos
+## Notas
 
-- A tradução server-side usa Lovable AI Gateway (sem custo extra ao usuário, já configurado).
-- Backfill: devis antigos sem `source_language` assumem `'pt'` (default).
-- O PDF (`DevisPdfTemplate`) e o envio por email **NÃO** são afetados — sempre usam idioma nativo. Isso preserva a integridade legal da proposta.
-- A tradução é puramente cosmética/visual no painel interno.
+- Comercial intocado.
+- AwesomeAPI pública, sem chave, CORS aberto.
+- `total_brl` recalculado por trigger, exceto quando a conciliação grava valor explícito (`fx_status='com_variacao_cambial'`).
+- Zero alteração em design tokens, sidebar, cards, espaçamentos ou tipografia.
