@@ -20,7 +20,7 @@ export function CurrencyCell({
 
   const mut = useMutation({
     mutationFn: async (newCurrency: string) => {
-      const patch: Record<string, unknown> = { currency: newCurrency };
+      const patch: { currency: string; exchange_rate?: number } = { currency: newCurrency };
       if (newCurrency === "BRL") {
         patch.exchange_rate = 1;
       } else if (!exchangeRate || exchangeRate === 1) {
