@@ -575,11 +575,12 @@ function Financeiro() {
             <CircleDashed className="h-4 w-4" />
             <span>{visible.length} lançamento(s) na visão atual</span>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-1 tabular-nums">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 tabular-nums">
             <span><span className="text-muted-foreground">Entradas:</span> <span className="font-semibold text-success">{fmt(metrics.totalIn)}</span></span>
             <span><span className="text-muted-foreground">Saídas:</span> <span className="font-semibold text-destructive">{fmt(metrics.totalOut)}</span></span>
             <span><span className="text-muted-foreground">Transferências:</span> <span className="font-semibold text-primary">{fmt(metrics.transfers)}</span></span>
             <span><span className="text-muted-foreground">Saldo Final:</span> <span className="font-bold">{fmt(metrics.saldoFinal)}</span></span>
+            <CurrencySummary rows={visible} />
           </div>
         </div>
       </div>
