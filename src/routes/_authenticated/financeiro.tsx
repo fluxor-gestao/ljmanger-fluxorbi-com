@@ -18,9 +18,6 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { FxTicker } from "@/components/financeiro/FxTicker";
-import { CurrencyCell } from "@/components/financeiro/CurrencyCell";
-import { RateCell } from "@/components/financeiro/RateCell";
-import { CurrencySummary } from "@/components/financeiro/CurrencySummary";
 
 const statusColors: Record<string, string> = {
   pendente: "bg-warning/15 text-warning border-warning/30",
@@ -580,7 +577,7 @@ function Financeiro() {
             <span><span className="text-muted-foreground">Saídas:</span> <span className="font-semibold text-destructive">{fmt(metrics.totalOut)}</span></span>
             <span><span className="text-muted-foreground">Transferências:</span> <span className="font-semibold text-primary">{fmt(metrics.transfers)}</span></span>
             <span><span className="text-muted-foreground">Saldo Final:</span> <span className="font-bold">{fmt(metrics.saldoFinal)}</span></span>
-            <CurrencySummary rows={visible} />
+            
           </div>
         </div>
       </div>
@@ -627,9 +624,6 @@ function EntriesTable({
             <TableHead className="font-semibold">Descrição</TableHead>
             <TableHead className="font-semibold">Fornecedor/Cliente</TableHead>
             <TableHead className="font-semibold text-right">Entrada</TableHead>
-            <TableHead className="font-semibold">Moeda</TableHead>
-            <TableHead className="font-semibold text-right">Taxa</TableHead>
-            <TableHead className="font-semibold text-right">Total (BRL)</TableHead>
             <TableHead className="font-semibold text-right">Saída</TableHead>
             <TableHead className="font-semibold">P/R</TableHead>
             <TableHead className="font-semibold">Status</TableHead>
@@ -638,13 +632,13 @@ function EntriesTable({
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={hideBank ? 13 : 14} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={hideBank ? 10 : 11} className="text-center py-8 text-muted-foreground">
                 Carregando...
               </TableCell>
             </TableRow>
           ) : rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={hideBank ? 13 : 14} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={hideBank ? 10 : 11} className="text-center py-8 text-muted-foreground">
                 Nenhum lançamento encontrado
               </TableCell>
             </TableRow>
@@ -669,18 +663,6 @@ function EntriesTable({
                 <TableCell className="py-1.5">{e.counterparty_name ?? "—"}</TableCell>
                 <TableCell className="py-1.5 text-right text-success font-medium tabular-nums">
                   {Number(e.amount_in) ? fmt(Number(e.amount_in)) : "—"}
-                </TableCell>
-                <TableCell className="py-1.5">
-                  <CurrencyCell entryId={e.id} currency={e.currency || "BRL"} exchangeRate={Number(e.exchange_rate || 1)} />
-                </TableCell>
-                <TableCell className="py-1.5 text-right">
-                  <RateCell entryId={e.id} currency={e.currency || "BRL"} exchangeRate={Number(e.exchange_rate || 1)} />
-                </TableCell>
-                <TableCell className="py-1.5 text-right tabular-nums font-medium">
-                  {e.total_brl != null ? fmt(Number(e.total_brl)) : "—"}
-                  {e.fx_status === "com_variacao_cambial" && (
-                    <span className="ml-1 text-[10px] text-warning" title="Conciliado com variação cambial">⚠</span>
-                  )}
                 </TableCell>
                 <TableCell className="py-1.5 text-right text-destructive font-medium tabular-nums">
                   {Number(e.amount_out) ? fmt(Number(e.amount_out)) : "—"}
