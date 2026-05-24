@@ -191,6 +191,7 @@ function Comercial() {
     const acceptedTotal = acceptedList.reduce((sum: number, d: any) => sum + (Number(d.total_amount) || 0), 0);
 
     return {
+      generated: devisList.length,
       sent,
       waiting,
       accepted: acceptedList.length,
@@ -376,7 +377,19 @@ function Comercial() {
 
         {/* DEVIS TAB */}
         <TabsContent value="devis" className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <Card className="overflow-hidden border-0 bg-gradient-to-br from-slate-600 to-slate-700 p-4 text-white shadow-md">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-white/85">Devis Gerados</p>
+                  <p className="mt-2 text-3xl font-bold font-display leading-none">{devisIndicators.generated}</p>
+                </div>
+                <div className="rounded-full bg-white/15 p-2">
+                  <FileText className="h-5 w-5" />
+                </div>
+              </div>
+            </Card>
+
             <Card className="overflow-hidden border-0 bg-gradient-to-br from-primary to-primary/80 p-4 text-primary-foreground shadow-md">
               <div className="flex items-start justify-between gap-3">
                 <div>
