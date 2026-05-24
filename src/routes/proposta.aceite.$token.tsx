@@ -15,6 +15,8 @@ import { CheckCircle2, Loader2, AlertCircle, Calendar, FileText, XCircle } from 
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import logo from "@/assets/logo.svg";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const FN_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/accept-devis-proposal`;
 const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
