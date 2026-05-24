@@ -79,16 +79,19 @@ function DevisDetail() {
   const profilesById = useMemo(() => Object.fromEntries(profiles.map((p: any) => [p.user_id, p])), [profiles]);
 
   useEffect(() => {
-    if (devis) {
-      setForm({
-        ...devis,
-        meeting_date: devis.meeting_date ? parseISO(devis.meeting_date) : undefined,
-        deadline_date: devis.deadline_date ? parseISO(devis.deadline_date) : undefined,
-        total_amount: String(devis.total_amount ?? ""),
-        down_payment_amount: String(devis.down_payment_amount ?? ""),
-      });
-    }
-  }, [devis]);
+    if (!devis) return;
+    // Só hidrata o form a partir do devis quando NÃO estiver editando.
+    // Caso contrário, um refetch (window focus, invalidate, etc.) sobrescreveria
+    // alterações locais ainda não salvas (ex.: sugestões da IA recém-aceitas).
+    if (editing) return;
+    setForm({
+      ...devis,
+      meeting_date: devis.meeting_date ? parseISO(devis.meeting_date) : undefined,
+      deadline_date: devis.deadline_date ? parseISO(devis.deadline_date) : undefined,
+      total_amount: String(devis.total_amount ?? ""),
+      down_payment_amount: String(devis.down_payment_amount ?? ""),
+    });
+  }, [devis, editing]);
 
   const update = useMutation({
     mutationFn: async () => {
