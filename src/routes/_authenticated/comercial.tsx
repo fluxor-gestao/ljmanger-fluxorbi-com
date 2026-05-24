@@ -191,6 +191,7 @@ function Comercial() {
     const acceptedTotal = acceptedList.reduce((sum: number, d: any) => sum + (Number(d.total_amount) || 0), 0);
 
     return {
+      generated: devisList.length,
       sent,
       waiting,
       accepted: acceptedList.length,
