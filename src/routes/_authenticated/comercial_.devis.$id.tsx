@@ -146,7 +146,20 @@ function DevisDetail() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      setAiSuggestions(data.suggestions);
+      const p = data.proposal ?? data.suggestions;
+      if (!p) throw new Error("Resposta da IA sem dados");
+      setAiSuggestions({
+        service_type: p.service_type ?? "",
+        responsible_sector: p.responsible_sector ?? "",
+        scope_description: p.scope_description ?? "",
+        proposal_structure: p.proposal_structure ?? "",
+      });
+      if (p.total_amount && !form.total_amount) {
+        const total = String(p.total_amount);
+        const down = String((Number(p.total_amount) * 0.5).toFixed(2));
+        setForm((f: any) => ({ ...f, total_amount: total, down_payment_amount: down }));
+      }
+      if (p.title && !form.title) setForm((f: any) => ({ ...f, title: p.title }));
     } catch (e: any) {
       toast.error(e.message || "Erro ao gerar proposta");
     } finally {
