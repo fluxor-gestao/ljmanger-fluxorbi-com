@@ -264,7 +264,11 @@ function AceitarProposta() {
                       <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
                         <FileText className="h-4 w-4" /> Estrutura da proposta
                       </div>
-                      <p className="text-sm whitespace-pre-wrap text-muted-foreground">{preview.proposal_structure}</p>
+                      <div className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-p:text-muted-foreground prose-li:text-muted-foreground prose-headings:font-semibold prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-h2:mt-5 prose-h3:mt-4">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {preview.proposal_structure}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   )}
                 </CardContent>
