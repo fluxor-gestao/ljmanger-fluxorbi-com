@@ -34,8 +34,9 @@ function AuthPage() {
       setLoading(false);
       return;
     }
+    // Não navegar imperativamente — o useEffect acima cuida do redirect
+    // quando o estado `user` for atualizado pelo onAuthStateChange.
     setRedirecting(true);
-    navigate({ to: "/hub", replace: true });
   };
 
   if (redirecting) return <LoadingScreen message="Abrindo sistema..." />;
