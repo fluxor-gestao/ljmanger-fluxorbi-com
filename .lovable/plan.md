@@ -1,86 +1,96 @@
-# Sprint 2 — Performance e consultas server-side
+
+# Bloco 2 — Comercial, Financeiro, Conciliação
 
 ## Diagnóstico
 
-### `select("*")` encontrados (13 ocorrências)
-- `operacao.tsx:41` — services
-- `financeiro.tsx:113` — financial_entries
-- `conciliacao.tsx:48,57,66` — bank_statement_entries, financial_entries, conciliation_matches
-- `comercial.tsx:101,110` — clients, devis
-- `comercial_.devis.$id.tsx:48,57` — devis (single), clients
-- `admin.tsx:183,192,203` — profiles, user_roles, audit_logs
-- `admin_.api-keys.tsx:76` — api_keys
+### Comercial (`src/routes/_authenticated/comercial.tsx`)
+Queries atuais:
+- `clients` → `select("*")` sem limit, sem filtro server-side.
+- `devis` → `select("*")` sem limit, sem filtros (filtros rodam em memória via `filteredDevis`).
+- `profiles-all` → leve, ~25 linhas, mantém como está.
+- `devis-financial-entries` → carrega todos os FE com `document_reference` para calcular indicadores.
+- `devis-services` → carrega todos os services com `devis_id` para indicadores.
 
-### Telas sem paginação server-side
-| Tela | Query atual | Risco |
-|---|---|---|
-| Comercial | clients + devis sem limit | Alto — cresce rápido |
-| Financeiro | financial_entries sem limit | Alto — milhares/mês |
-| Conciliação | 3 queries com `.limit(200)` fixo | Médio — corta dados |
-| Operação | services sem limit | Médio |
-| Admin (audit_logs) | `.limit(50)` fixo, sem paginar | Médio |
-| Admin (profiles/roles) | sem paginação | Baixo (~25 users) |
+Problema central: indicadores (`devisIndicators`) e Kanban dependem da lista inteira de devis carregada em memória. Paginar a tabela quebra os indicadores e o Kanban.
 
-### Consultas duplicadas
-- `clients` carregado em `comercial.tsx` e em `comercial_.devis.$id.tsx` — pode reusar via queryKey compartilhada.
-- `profiles` + `user_roles` cruzados client-side em admin.
+### Financeiro (`src/routes/_authenticated/financeiro.tsx`)
+Queries atuais:
+- `financial-entries` → `select("*")` com `.limit(500)` fixo. Filtros de competence/business/search já vão ao banco, mas bankFilter/typeFilter/statusFilter/originFilter/realizedFilter rodam em memória.
+- Métricas (`metrics`, `analitico`) calculadas no frontend sobre `filtered`. Se a base crescer, o `.limit(500)` corta dados e os totais ficam incorretos.
 
-### Filtros que rodam no frontend (devem ir pro banco)
-- Comercial: busca por título/cliente, filtro por status/business_unit — hoje filtra após `select("*")`.
-- Financeiro: filtros de data, business_unit, tipo, conciliation_status.
-- Conciliação: status pendente já está no SQL, mas busca textual é client-side.
+### Conciliação (`src/routes/_authenticated/conciliacao.tsx`)
+Queries atuais:
+- `bank-statements` → `select("*")` `.limit(200)`.
+- `financial-entries-conciliation` → `select("*")` `.eq pendente` `.limit(200)`.
+- `conciliation-matches` → `select("*")` sem limit.
 
-## Plano de execução (3 blocos, aplicados separadamente com aprovação entre cada um)
+Problema central: matching automático (`suggestMatches`, `autoSuggest`, `matchScore`, `pairedRows`) percorre as duas listas inteiras em memória cruzando-as. Paginar essas listas quebra o algoritmo de pareamento.
 
-### Bloco 1 — Fundação (hooks + tipos)
-1. Criar `src/lib/pagination.ts`: tipo `PageState { page, pageSize, total }` + helper `rangeFor(page, pageSize)`.
-2. Criar `src/hooks/usePaginatedQuery.ts`: wrapper sobre `useQuery` que aceita `{ table, columns, filters, order, page, pageSize }` e devolve `{ rows, total, isLoading, error, refetch }` usando `.select(columns, { count: 'exact' }).range(...)`.
-3. Criar `src/components/DataStates.tsx`: `<LoadingState/>`, `<EmptyState/>`, `<ErrorState onRetry/>` reutilizáveis.
-4. Criar `src/components/Pagination.tsx`: controles "Anterior/Próxima" + indicador "X–Y de N".
+## Plano de execução
 
-Sem mudança visual nas telas ainda.
+### Passo 1 — Comercial
+**Princípio:** separar "dados para indicadores/Kanban" (resumo leve, agregado no banco) de "dados para tabela" (paginado).
 
-### Bloco 2 — Comercial, Financeiro, Conciliação
-Aplicar nas 3 telas críticas:
-- **Comercial** (`comercial.tsx`):
-  - `devis`: paginar (20/pág), colunas explícitas (`id, devis_number, title, status, total_amount, business_unit, client_id, created_at, accepted_at, sent_at, deadline_date`), filtros server-side (status, business_unit, busca por título/devis_number via `ilike`), ordenação por `created_at desc` no banco.
-  - `clients`: trocar `select("*")` por `id, name, business_unit_id, type` (apenas o que o select de devis usa); paginar a aba Clientes (50/pág).
-- **Financeiro** (`financeiro.tsx`): paginar `financial_entries` (50/pág), colunas explícitas, filtros de data/business_unit/entry_type/conciliation_status server-side, ordenação `entry_date desc`.
-- **Conciliação** (`conciliacao.tsx`): manter limites mas trocar para paginação real, colunas explícitas nas 3 queries, busca textual via `ilike` no banco.
+1. Criar agregados server-side para os 4 cards e Kanban:
+   - Indicadores: usar `bi_kpis_comercial` já existente (já roda no banco) OU adicionar uma query simples `select('status, accepted_at, sent_at, total_amount').range(0, 5000)` apenas para os cards/Kanban — mantém o comportamento atual sem `select("*")`.
+   - Kanban continua usando esse payload reduzido (precisa de todos os devis para agrupar por status).
+2. Tabela de devis (modo "list"):
+   - Query separada `['devis','list', {page, status, businessUnit, clientId, q}]` com paginação server-side (20/pág), colunas explícitas (`id, devis_number, title, status, total_amount, business_unit, client_id, created_at, sent_at, accepted_at, deadline_date, commercial_responsible, meeting_date`), filtros `eq` + `ilike` no Supabase, `order('created_at', desc)`, `range(...)`, `count: 'exact'`, `placeholderData: keepPreviousData`.
+3. Aba Clientes:
+   - Substituir `select("*")` por colunas explícitas (`id, name, email, phone, document, type, notes, business_unit_id, active`).
+   - Paginar 50/pág; busca `ilike` server-side por `name`/`email`/`document`.
+   - Manter `clientsById` (lookup) com query separada `['clients','lookup']` com colunas mínimas (`id, name, business_unit_id, type`) carregando até 5000 — necessário para resolver nomes na tabela de devis sem N+1.
+4. `devis-financial-entries` e `devis-services` continuam (são lookups agregados para badges); mantém colunas explícitas como já estão.
+5. `LoadingState`/`EmptyState`/`ErrorState` na tabela de devis e na aba Clientes; `<Pagination/>` no rodapé de ambas.
 
-Adicionar Loading/Empty/Error states + botão "Tentar novamente".
+### Passo 2 — Financeiro
+1. Query principal `['financial-entries', {page, competence, businessUnit, bank, type, status, origin, realized, search}]`:
+   - Colunas explícitas (substituir `select("*")` pela lista do tipo `Entry`).
+   - Todos os filtros via `eq`/`ilike` no Supabase; `range`+`count:'exact'`; `order entry_date desc`; `placeholderData: keepPreviousData`.
+   - "Origem" e "Realizado/Previsto" mapeados para condições SQL:
+     - origem `transferência` → `eq('entry_type','transferencia')`
+     - origem `ofx` → `in('source_type', ['ofx','extrato'])`
+     - origem `comercial` → `not('document_reference','is',null)` + `neq('entry_type','transferencia')`
+     - origem `manual` → `eq('source_type','manual')` + `is('document_reference', null)`
+     - realizado → `neq('conciliation_status','pendente')`; previsto → `eq('conciliation_status','pendente')`.
+   - 50/pág.
+2. **Métricas/Analítico (gargalo real):** criar (nova migration) duas RPCs no banco para não depender dos 500 registros em memória:
+   - `financeiro_summary(_competence, _business_unit, _search, _bank, _type, _status, _origin, _realized) returns jsonb` → totais (in/out/transferências/previstoIn/saldoFinal) **respeitando os mesmos filtros**.
+   - `financeiro_analitico(... mesmos filtros)` → agregado por `competence_month` (in/out).
+   - Useremos `useQuery` separadas que chamam `supabase.rpc(...)` com a mesma queryKey dos filtros. Sem cálculo no frontend.
+3. Aba Fluxo (agrupamento por banco) e aba Analítico passam a usar a RPC ou paginação por banco — neste sprint, mantemos o agrupamento da página atual (já filtrado/paginado) com aviso de "visível na página".
+4. `bank-accounts` mantém como está (lista pequena, já tem colunas explícitas).
 
-### Bloco 3 — Operação, Clientes, Serviços, Admin/Auditoria
-- **Operação** (`operacao.tsx`): paginar services, colunas explícitas, filtros por status/sector.
-- **Clientes** (aba dentro de comercial): já coberta no Bloco 2.
-- **Admin** (`admin.tsx`):
-  - `audit_logs`: paginar (50/pág) com filtro por entity_type/action/data.
-  - `profiles`, `user_roles`, `api_keys`: colunas explícitas; paginação leve (50/pág) só se necessário.
-- **Devis detalhe** (`comercial_.devis.$id.tsx`): colunas explícitas em devis e clients; reuso da query de clients via queryKey compartilhada (`['clients','lookup']`).
+### Passo 3 — Conciliação
+1. **Não quebrar o matching:** Separar "lista exibida" de "universo para matching".
+   - `bank-statements-display` (paginada 50/pág, colunas explícitas: `id, transaction_date, description, amount, direction, conciliation_status, bank_account_id, document_number`, filtro `ilike` no `description` server-side, ordem por data desc, `count:'exact'`). Usada na tabela.
+   - `financial-entries-conciliation` (paginada 50/pág, colunas explícitas) usada na tabela de FE.
+2. Matching automático (`suggestMatches`): mover para o banco como RPC `suggest_conciliation_matches()` que faz o cross-join com janela de 5 dias e tolerância de centavos, inserindo direto em `conciliation_matches`. Frontend só dispara a RPC. Evita carregar tudo no cliente.
+3. `autoSuggest` em memória (usado no layout "paired"): substituir por uma query pontual `select(...).gte/lte/eq(amount/date/direction)` por linha visível — chamada via `useQueries` em cima das `pageStatements`. Mantém UX.
+4. `conciliation-matches`: já é pequena por natureza, mas adiciona colunas explícitas (`id, bank_statement_entry_id, financial_entry_id, status, match_score, match_type, created_at`) e `.in('bank_statement_entry_id', visibleIds)` para trazer só os matches dos extratos visíveis.
+5. `LoadingState`/`EmptyState`/`ErrorState` + `<Pagination/>` nas duas tabelas.
 
-## Detalhes técnicos
-
-**Paginação Supabase:**
-```ts
-const from = page * pageSize;
-const to = from + pageSize - 1;
-const { data, count, error } = await supabase
-  .from('devis')
-  .select('id, devis_number, ...', { count: 'exact' })
-  .order('created_at', { ascending: false })
-  .range(from, to);
-```
-
-**queryKey inclui filtros/página** → cache automático por combinação, sem refetch indevido.
-
-**Sem mudanças em:** RLS, regras de negócio, layout geral, matriz de papéis, BI (já usa funções agregadas).
+## Arquivos impactados
+- `src/routes/_authenticated/comercial.tsx`
+- `src/routes/_authenticated/financeiro.tsx`
+- `src/routes/_authenticated/conciliacao.tsx`
+- Nova migration: `supabase/migrations/<timestamp>_financeiro_e_conciliacao_rpcs.sql` com:
+  - `financeiro_summary(...)` (security definer, stable)
+  - `financeiro_analitico(...)` (stable)
+  - `suggest_conciliation_matches()` (security definer)
 
 ## Riscos e mitigação
-- Quebra de tipos TS ao trocar `select("*")` por colunas → tipos derivados de `Database['public']['Tables'][T]['Row']`, escolher apenas campos efetivamente lidos no JSX (verifico cada uso antes).
-- Filtros antes carregados em memória que esperavam todos os registros → mantenho a UX (mesmos filtros), só movo a lógica para a query.
-- Conciliação tem matching automático que percorre as 3 listas — verifico se depende de carregar tudo; se sim, isolo a heurística de matching numa query própria (sem paginação) e paginei apenas o display.
+- **Comercial — indicadores/Kanban:** Kanban precisa de todos os devis; manter uma query separada leve (`select` colunas mínimas, `range(0, 4999)`) só para Kanban+indicadores. Quando a base ultrapassar 5k, migrar Kanban para "carregar por coluna/status".
+- **Financeiro — totais:** depender das novas RPCs com os mesmos filtros. Testar igualdade dos números antes/depois com dataset atual.
+- **Conciliação — matching:** mover para SQL evita carregar tudo no cliente; o algoritmo atual é simples (amount ± 0.01, data ± 5 dias) → traduz 1:1 em SQL.
+- **Tipos TS:** ao trocar `select("*")` por colunas, derivar tipos de `Database['public']['Tables'][T]['Row']` com `Pick<...>` para evitar quebras.
+- **Realtime no Comercial:** manter as 3 subscriptions; invalidam queries paginadas (re-fetch da página atual) sem efeito colateral.
 
-## Ordem proposta
-Aprovar este plano → executo **Bloco 1** (fundação, sem impacto visual) → reporto → **Bloco 2** (3 telas críticas) → reporto → **Bloco 3** (restantes).
+## Ordem de aplicação
+1. Comercial (passo 1) → reportar.
+2. Financeiro (passo 2 — incluindo a migration das RPCs) → reportar.
+3. Conciliação (passo 3 — incluindo a RPC de matching) → reportar.
 
-Posso começar?
+Sem mudanças de RLS, matriz de papéis, regras de negócio ou layout.
+
+Posso iniciar?

@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { Plus, Users, FileText, Eye, Pencil, CalendarIcon, Filter, LayoutGrid, List, Sparkles, Loader2, Upload, ArrowLeft, Send, Clock, CheckCircle2, HelpCircle } from "lucide-react";
+import { Plus, Users, FileText, Eye, Pencil, CalendarIcon, Filter, LayoutGrid, List, Sparkles, Loader2, Upload, ArrowLeft, Send, Clock, CheckCircle2, HelpCircle, Search } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,13 @@ import AISuggestionsBlock, { type AISuggestions } from "@/components/devis/AISug
 import UploadAtaDialog, { type ConfirmedAtaResult } from "@/components/devis/UploadAtaDialog";
 import DevisCodePreviewDialog, { inferServicePrefix, type ServicePrefix } from "@/components/devis/DevisCodePreviewDialog";
 import { CurrencyInputBRL } from "@/components/ui/currency-input-brl";
+import { LoadingState, EmptyState, ErrorState } from "@/components/DataStates";
+import { Pagination } from "@/components/Pagination";
+import { rangeFor } from "@/lib/pagination";
+
+const DEVIS_PAGE_SIZE = 20;
+const CLIENTS_PAGE_SIZE = 50;
+const SUMMARY_HARD_CAP = 5000;
 
 const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(n) || 0);
@@ -91,26 +98,68 @@ function Comercial() {
   const [filterStart, setFilterStart] = useState<Date | undefined>();
   const [filterEnd, setFilterEnd] = useState<Date | undefined>();
   const [view, setView] = useState<"list" | "kanban">("list");
+  const [devisPage, setDevisPage] = useState(0);
+  const [clientsPage, setClientsPage] = useState(0);
+  const [clientsSearch, setClientsSearch] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestions | null>(null);
   const [aiAccepted, setAiAccepted] = useState<Partial<AISuggestions>>({});
   const [generating, setGenerating] = useState(false);
   const [uploadAtaOpen, setUploadAtaOpen] = useState(false);
+
+  // Reset paginação quando filtros mudam
+  useEffect(() => { setDevisPage(0); }, [filterStatus, filterClient, filterStart, filterEnd]);
+  useEffect(() => { setClientsPage(0); }, [clientsSearch]);
+
+  // Lookup de clientes (colunas mínimas, usado em selects e clientsById)
   const { data: clients = [] } = useQuery({
-    queryKey: ["clients"],
+    queryKey: ["clients", "lookup"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clients").select("*").order("name");
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name, email, phone, document, type, business_unit_id, active, notes")
+        .order("name")
+        .range(0, SUMMARY_HARD_CAP - 1);
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const { data: devisList = [] } = useQuery({
-    queryKey: ["devis"],
+  // Resumo leve de devis (alimenta indicadores + Kanban)
+  const { data: devisSummary = [] } = useQuery({
+    queryKey: ["devis", "summary"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("devis").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("devis")
+        .select("id, devis_number, title, status, total_amount, down_payment_amount, business_unit, client_id, created_at, sent_at, accepted_at, rejected_at, deadline_date, meeting_date, commercial_responsible")
+        .order("created_at", { ascending: false })
+        .range(0, SUMMARY_HARD_CAP - 1);
       if (error) throw error;
       return data ?? [];
     },
+  });
+
+  // Lista paginada de devis (modo list) — filtros server-side
+  const startISO = filterStart ? format(filterStart, "yyyy-MM-dd") : null;
+  const endISO = filterEnd ? format(filterEnd, "yyyy-MM-dd") : null;
+  const devisListQuery = useQuery({
+    queryKey: ["devis", "list", { page: devisPage, status: filterStatus, client: filterClient, start: startISO, end: endISO }],
+    queryFn: async () => {
+      const [from, to] = rangeFor(devisPage, DEVIS_PAGE_SIZE);
+      let q = supabase
+        .from("devis")
+        .select("id, devis_number, title, status, total_amount, down_payment_amount, business_unit, client_id, created_at, sent_at, accepted_at, deadline_date, meeting_date, commercial_responsible", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      if (filterStatus !== "all") q = q.eq("status", filterStatus as any);
+      if (filterClient !== "all") q = q.eq("client_id", filterClient);
+      if (startISO) q = q.gte("meeting_date", startISO);
+      if (endISO) q = q.lte("meeting_date", endISO);
+      const { data, count, error } = await q;
+      if (error) throw error;
+      return { rows: data ?? [], total: count ?? 0 };
+    },
+    placeholderData: (prev) => prev,
+    enabled: view === "list",
   });
 
   const { data: profiles = [] } = useQuery({
@@ -122,7 +171,26 @@ function Comercial() {
     },
   });
 
-  // Financial entries ligadas a devis (via document_reference = reference_number OU id)
+  // Lista paginada de clientes (aba Clientes) — busca server-side
+  const clientsListQuery = useQuery({
+    queryKey: ["clients", "list", { page: clientsPage, q: clientsSearch }],
+    queryFn: async () => {
+      const [from, to] = rangeFor(clientsPage, CLIENTS_PAGE_SIZE);
+      let q = supabase
+        .from("clients")
+        .select("id, name, email, phone, document, type, business_unit_id, active", { count: "exact" })
+        .order("name")
+        .range(from, to);
+      const term = clientsSearch.trim();
+      if (term) q = q.or(`name.ilike.%${term}%,email.ilike.%${term}%,document.ilike.%${term}%`);
+      const { data, count, error } = await q;
+      if (error) throw error;
+      return { rows: data ?? [], total: count ?? 0 };
+    },
+    placeholderData: (prev) => prev,
+  });
+
+  // Financial entries ligadas a devis (badges/indicadores)
   const { data: devisFinancialEntries = [] } = useQuery({
     queryKey: ["devis-financial-entries"],
     queryFn: async () => {
@@ -183,31 +251,35 @@ function Comercial() {
   const profilesById = useMemo(() => Object.fromEntries(profiles.map((p: any) => [p.user_id, p])), [profiles]);
 
   const devisIndicators = useMemo(() => {
-    const acceptedList = devisList.filter((d: any) => d.status === "aceita" || !!d.accepted_at);
-    const sent = devisList.filter((d: any) =>
+    const acceptedList = devisSummary.filter((d: any) => d.status === "aceita" || !!d.accepted_at);
+    const sent = devisSummary.filter((d: any) =>
       !!d.sent_at || d.status === "enviada_ao_cliente" || d.status === "aguardando_aceite" || d.status === "aceita" || !!d.accepted_at,
     ).length;
-    const waiting = devisList.filter((d: any) => d.status === "aguardando_aceite").length;
+    const waiting = devisSummary.filter((d: any) => d.status === "aguardando_aceite").length;
     const acceptedTotal = acceptedList.reduce((sum: number, d: any) => sum + (Number(d.total_amount) || 0), 0);
 
     return {
-      generated: devisList.length,
+      generated: devisSummary.length,
       sent,
       waiting,
       accepted: acceptedList.length,
       acceptedTotal,
     };
-  }, [devisList]);
+  }, [devisSummary]);
 
-  const filteredDevis = useMemo(() => {
-    return devisList.filter((d: any) => {
-      if (view === "list" && filterStatus !== "all" && d.status !== filterStatus) return false;
+  // Kanban usa o resumo completo + filtros client-side (client/data); status fica liberado no Kanban
+  const kanbanDevis = useMemo(() => {
+    return devisSummary.filter((d: any) => {
       if (filterClient !== "all" && d.client_id !== filterClient) return false;
       if (filterStart && d.meeting_date && parseISO(d.meeting_date) < filterStart) return false;
       if (filterEnd && d.meeting_date && parseISO(d.meeting_date) > filterEnd) return false;
       return true;
     });
-  }, [devisList, filterStatus, filterClient, filterStart, filterEnd, view]);
+  }, [devisSummary, filterClient, filterStart, filterEnd]);
+
+  // List usa a query paginada (filtros já server-side)
+  const devisListRows = devisListQuery.data?.rows ?? [];
+  const devisListTotal = devisListQuery.data?.total ?? 0;
 
   const saveClient = useMutation({
     mutationFn: async (form: ClientForm) => {
@@ -651,7 +723,7 @@ function Comercial() {
 
           {view === "kanban" ? (
             <DevisKanban
-              devis={filteredDevis}
+              devis={kanbanDevis}
               clientsById={clientsById}
               profilesById={profilesById}
               financialEntries={devisFinancialEntries}
@@ -672,9 +744,13 @@ function Comercial() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredDevis.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum devis encontrado</TableCell></TableRow>
-                  ) : filteredDevis.map((d: any) => (
+                  {devisListQuery.isLoading && !devisListQuery.data ? (
+                    <TableRow><TableCell colSpan={7}><LoadingState /></TableCell></TableRow>
+                  ) : devisListQuery.isError ? (
+                    <TableRow><TableCell colSpan={7}><ErrorState onRetry={() => devisListQuery.refetch()} /></TableCell></TableRow>
+                  ) : devisListRows.length === 0 ? (
+                    <TableRow><TableCell colSpan={7}><EmptyState title="Nenhum devis encontrado" description="Ajuste os filtros ou crie um novo devis." /></TableCell></TableRow>
+                  ) : devisListRows.map((d: any) => (
                     <TableRow key={d.id} className="cursor-pointer" onClick={() => navigate({ to: "/comercial/devis/$id", params: { id: d.id } })}>
                       <TableCell className="font-medium">{clientsById[d.client_id]?.name || "—"}</TableCell>
                       <TableCell><Badge variant="outline" className={devisStatusColors[d.status] || ""}>{statusLabels[d.status] || d.status}</Badge></TableCell>
@@ -691,13 +767,31 @@ function Comercial() {
                   ))}
                 </TableBody>
               </Table>
+              <div className="px-4">
+                <Pagination
+                  page={devisPage}
+                  pageSize={DEVIS_PAGE_SIZE}
+                  total={devisListTotal}
+                  onPageChange={setDevisPage}
+                  disabled={devisListQuery.isFetching}
+                />
+              </div>
             </Card>
           )}
         </TabsContent>
 
         {/* CLIENTS TAB */}
         <TabsContent value="clients" className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, email ou documento"
+                value={clientsSearch}
+                onChange={(e) => setClientsSearch(e.target.value)}
+                className="pl-8"
+              />
+            </div>
             <Dialog open={clientDialogOpen} onOpenChange={(o) => { setClientDialogOpen(o); if (!o) setClientForm(emptyClient); }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> Novo Cliente</Button></DialogTrigger>
               <DialogContent>
@@ -750,9 +844,13 @@ function Comercial() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clients.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum cliente cadastrado</TableCell></TableRow>
-                ) : clients.map((c: any) => (
+                {clientsListQuery.isLoading && !clientsListQuery.data ? (
+                  <TableRow><TableCell colSpan={6}><LoadingState /></TableCell></TableRow>
+                ) : clientsListQuery.isError ? (
+                  <TableRow><TableCell colSpan={6}><ErrorState onRetry={() => clientsListQuery.refetch()} /></TableCell></TableRow>
+                ) : (clientsListQuery.data?.rows.length ?? 0) === 0 ? (
+                  <TableRow><TableCell colSpan={6}><EmptyState title="Nenhum cliente encontrado" description={clientsSearch ? "Ajuste a busca." : "Cadastre o primeiro cliente."} /></TableCell></TableRow>
+                ) : (clientsListQuery.data?.rows ?? []).map((c: any) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell><Badge variant="outline">{c.type || "PJ"}</Badge></TableCell>
@@ -768,6 +866,15 @@ function Comercial() {
                 ))}
               </TableBody>
             </Table>
+            <div className="px-4">
+              <Pagination
+                page={clientsPage}
+                pageSize={CLIENTS_PAGE_SIZE}
+                total={clientsListQuery.data?.total ?? 0}
+                onPageChange={setClientsPage}
+                disabled={clientsListQuery.isFetching}
+              />
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
