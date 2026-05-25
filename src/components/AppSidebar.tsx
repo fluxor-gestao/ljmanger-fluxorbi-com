@@ -8,9 +8,10 @@ import {
   Shield,
   HelpCircle,
   LogOut,
+  GitCompare,
 } from "lucide-react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import logoBanner from "@/assets/logo-banner.png";
 import {
   Sidebar,
@@ -26,17 +27,26 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const mainItems = [
+type NavItem = {
+  title: string;
+  url: string;
+  icon: typeof Home;
+  /** Papéis que veem o item. Vazio/ausente = todos autenticados. Admin sempre vê. */
+  roles?: AppRole[];
+};
+
+const mainItems: NavItem[] = [
   { title: "Início", url: "/hub", icon: Home },
-  { title: "Comercial", url: "/comercial", icon: ShoppingCart },
-  { title: "Financeiro", url: "/financeiro", icon: DollarSign },
-  { title: "Operação", url: "/operacao", icon: Settings2 },
+  { title: "Comercial", url: "/comercial", icon: ShoppingCart, roles: ["comercial"] },
+  { title: "Financeiro", url: "/financeiro", icon: DollarSign, roles: ["financeiro"] },
+  { title: "Conciliação", url: "/conciliacao", icon: GitCompare, roles: ["financeiro"] },
+  { title: "Operação", url: "/operacao", icon: Settings2, roles: ["operacao"] },
 ];
 
-const managementItems = [
-  { title: "Gestão", url: "/gestao", icon: Building2 },
-  { title: "BI / Business Intelligence", url: "/bi", icon: BarChart3 },
-  { title: "Opções / Usuários", url: "/admin", icon: Shield, adminOnly: true },
+const managementItems: NavItem[] = [
+  { title: "Gestão", url: "/gestao", icon: Building2, roles: ["admin"] },
+  { title: "BI / Business Intelligence", url: "/bi", icon: BarChart3, roles: ["comercial", "financeiro", "operacao"] },
+  { title: "Opções / Usuários", url: "/admin", icon: Shield, roles: ["admin"] },
   { title: "Central de Ajuda", url: "/ajuda", icon: HelpCircle },
 ];
 
@@ -45,18 +55,19 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, refreshRole, signOut } = useAuth();
+  const { user, hasRole, refreshRole, signOut } = useAuth();
 
   const isActive = (path: string) =>
     path === "/hub" ? location.pathname === "/hub" : location.pathname.startsWith(path);
 
-  const filteredManagement = managementItems.filter(
-    (item) => !item.adminOnly || Boolean(user)
-  );
+  const canSee = (item: NavItem) => !item.roles || item.roles.length === 0 || hasRole(item.roles);
+
+  const visibleMain = mainItems.filter(canSee);
+  const visibleManagement = managementItems.filter(canSee);
 
   const handleNavigate = async (url: string) => {
     if (url === "/admin") await refreshRole();
-    navigate({ to: url as string });
+    navigate({ to: url });
   };
 
   return (
@@ -78,11 +89,11 @@ export function AppSidebar() {
           <SidebarGroupLabel>Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainItems.map((item) => (
+              {visibleMain.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton isActive={isActive(item.url)} onClick={() => handleNavigate(item.url)}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                    <item.icon className="h-4 w-4" />
+                    {!collapsed && <span>{item.title}</span>}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -94,11 +105,11 @@ export function AppSidebar() {
           <SidebarGroupLabel>Gestão</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredManagement.map((item) => (
+              {visibleManagement.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton isActive={isActive(item.url)} onClick={() => handleNavigate(item.url)}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                    <item.icon className="h-4 w-4" />
+                    {!collapsed && <span>{item.title}</span>}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
