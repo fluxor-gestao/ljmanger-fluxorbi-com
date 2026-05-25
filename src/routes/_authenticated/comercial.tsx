@@ -98,26 +98,68 @@ function Comercial() {
   const [filterStart, setFilterStart] = useState<Date | undefined>();
   const [filterEnd, setFilterEnd] = useState<Date | undefined>();
   const [view, setView] = useState<"list" | "kanban">("list");
+  const [devisPage, setDevisPage] = useState(0);
+  const [clientsPage, setClientsPage] = useState(0);
+  const [clientsSearch, setClientsSearch] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestions | null>(null);
   const [aiAccepted, setAiAccepted] = useState<Partial<AISuggestions>>({});
   const [generating, setGenerating] = useState(false);
   const [uploadAtaOpen, setUploadAtaOpen] = useState(false);
+
+  // Reset paginação quando filtros mudam
+  useEffect(() => { setDevisPage(0); }, [filterStatus, filterClient, filterStart, filterEnd]);
+  useEffect(() => { setClientsPage(0); }, [clientsSearch]);
+
+  // Lookup de clientes (colunas mínimas, usado em selects e clientsById)
   const { data: clients = [] } = useQuery({
-    queryKey: ["clients"],
+    queryKey: ["clients", "lookup"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clients").select("*").order("name");
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name, email, phone, document, type, business_unit_id, active, notes")
+        .order("name")
+        .range(0, SUMMARY_HARD_CAP - 1);
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const { data: devisList = [] } = useQuery({
-    queryKey: ["devis"],
+  // Resumo leve de devis (alimenta indicadores + Kanban)
+  const { data: devisSummary = [] } = useQuery({
+    queryKey: ["devis", "summary"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("devis").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("devis")
+        .select("id, devis_number, title, status, total_amount, down_payment_amount, business_unit, client_id, created_at, sent_at, accepted_at, rejected_at, deadline_date, meeting_date, commercial_responsible")
+        .order("created_at", { ascending: false })
+        .range(0, SUMMARY_HARD_CAP - 1);
       if (error) throw error;
       return data ?? [];
     },
+  });
+
+  // Lista paginada de devis (modo list) — filtros server-side
+  const startISO = filterStart ? format(filterStart, "yyyy-MM-dd") : null;
+  const endISO = filterEnd ? format(filterEnd, "yyyy-MM-dd") : null;
+  const devisListQuery = useQuery({
+    queryKey: ["devis", "list", { page: devisPage, status: filterStatus, client: filterClient, start: startISO, end: endISO }],
+    queryFn: async () => {
+      const [from, to] = rangeFor(devisPage, DEVIS_PAGE_SIZE);
+      let q = supabase
+        .from("devis")
+        .select("id, devis_number, title, status, total_amount, down_payment_amount, business_unit, client_id, created_at, sent_at, accepted_at, deadline_date, meeting_date, commercial_responsible", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      if (filterStatus !== "all") q = q.eq("status", filterStatus as any);
+      if (filterClient !== "all") q = q.eq("client_id", filterClient);
+      if (startISO) q = q.gte("meeting_date", startISO);
+      if (endISO) q = q.lte("meeting_date", endISO);
+      const { data, count, error } = await q;
+      if (error) throw error;
+      return { rows: data ?? [], total: count ?? 0 };
+    },
+    placeholderData: (prev) => prev,
+    enabled: view === "list",
   });
 
   const { data: profiles = [] } = useQuery({
@@ -129,7 +171,26 @@ function Comercial() {
     },
   });
 
-  // Financial entries ligadas a devis (via document_reference = reference_number OU id)
+  // Lista paginada de clientes (aba Clientes) — busca server-side
+  const clientsListQuery = useQuery({
+    queryKey: ["clients", "list", { page: clientsPage, q: clientsSearch }],
+    queryFn: async () => {
+      const [from, to] = rangeFor(clientsPage, CLIENTS_PAGE_SIZE);
+      let q = supabase
+        .from("clients")
+        .select("id, name, email, phone, document, type, business_unit_id, active", { count: "exact" })
+        .order("name")
+        .range(from, to);
+      const term = clientsSearch.trim();
+      if (term) q = q.or(`name.ilike.%${term}%,email.ilike.%${term}%,document.ilike.%${term}%`);
+      const { data, count, error } = await q;
+      if (error) throw error;
+      return { rows: data ?? [], total: count ?? 0 };
+    },
+    placeholderData: (prev) => prev,
+  });
+
+  // Financial entries ligadas a devis (badges/indicadores)
   const { data: devisFinancialEntries = [] } = useQuery({
     queryKey: ["devis-financial-entries"],
     queryFn: async () => {
