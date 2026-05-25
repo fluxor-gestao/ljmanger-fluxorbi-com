@@ -844,9 +844,13 @@ function Comercial() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clients.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum cliente cadastrado</TableCell></TableRow>
-                ) : clients.map((c: any) => (
+                {clientsListQuery.isLoading && !clientsListQuery.data ? (
+                  <TableRow><TableCell colSpan={6}><LoadingState /></TableCell></TableRow>
+                ) : clientsListQuery.isError ? (
+                  <TableRow><TableCell colSpan={6}><ErrorState onRetry={() => clientsListQuery.refetch()} /></TableCell></TableRow>
+                ) : (clientsListQuery.data?.rows.length ?? 0) === 0 ? (
+                  <TableRow><TableCell colSpan={6}><EmptyState title="Nenhum cliente encontrado" description={clientsSearch ? "Ajuste a busca." : "Cadastre o primeiro cliente."} /></TableCell></TableRow>
+                ) : (clientsListQuery.data?.rows ?? []).map((c: any) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell><Badge variant="outline">{c.type || "PJ"}</Badge></TableCell>
@@ -862,6 +866,15 @@ function Comercial() {
                 ))}
               </TableBody>
             </Table>
+            <div className="px-4">
+              <Pagination
+                page={clientsPage}
+                pageSize={CLIENTS_PAGE_SIZE}
+                total={clientsListQuery.data?.total ?? 0}
+                onPageChange={setClientsPage}
+                disabled={clientsListQuery.isFetching}
+              />
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
