@@ -782,7 +782,16 @@ function Comercial() {
 
         {/* CLIENTS TAB */}
         <TabsContent value="clients" className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, email ou documento"
+                value={clientsSearch}
+                onChange={(e) => setClientsSearch(e.target.value)}
+                className="pl-8"
+              />
+            </div>
             <Dialog open={clientDialogOpen} onOpenChange={(o) => { setClientDialogOpen(o); if (!o) setClientForm(emptyClient); }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> Novo Cliente</Button></DialogTrigger>
               <DialogContent>
