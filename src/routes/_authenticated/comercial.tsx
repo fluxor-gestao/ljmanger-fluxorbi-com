@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { Plus, Users, FileText, Eye, Pencil, CalendarIcon, Filter, LayoutGrid, List, Sparkles, Loader2, Upload, ArrowLeft, Send, Clock, CheckCircle2, HelpCircle } from "lucide-react";
+import { Plus, Users, FileText, Eye, Pencil, CalendarIcon, Filter, LayoutGrid, List, Sparkles, Loader2, Upload, ArrowLeft, Send, Clock, CheckCircle2, HelpCircle, Search } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,13 @@ import AISuggestionsBlock, { type AISuggestions } from "@/components/devis/AISug
 import UploadAtaDialog, { type ConfirmedAtaResult } from "@/components/devis/UploadAtaDialog";
 import DevisCodePreviewDialog, { inferServicePrefix, type ServicePrefix } from "@/components/devis/DevisCodePreviewDialog";
 import { CurrencyInputBRL } from "@/components/ui/currency-input-brl";
+import { LoadingState, EmptyState, ErrorState } from "@/components/DataStates";
+import { Pagination } from "@/components/Pagination";
+import { rangeFor } from "@/lib/pagination";
+
+const DEVIS_PAGE_SIZE = 20;
+const CLIENTS_PAGE_SIZE = 50;
+const SUMMARY_HARD_CAP = 5000;
 
 const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(n) || 0);
