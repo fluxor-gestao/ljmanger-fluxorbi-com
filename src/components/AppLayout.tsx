@@ -2,6 +2,7 @@ import { Outlet, useRouterState } from "@tanstack/react-router";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { AccessGuard } from "@/components/AccessGuard";
 
 export function AppLayout() {
   const isNavigating = useRouterState({
@@ -17,7 +18,9 @@ export function AppLayout() {
             <SidebarTrigger />
           </header>
           <main className="flex-1 overflow-auto p-6">
-            <Outlet />
+            <AccessGuard>
+              <Outlet />
+            </AccessGuard>
           </main>
         </div>
       </div>
