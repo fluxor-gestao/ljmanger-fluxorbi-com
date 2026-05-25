@@ -723,7 +723,7 @@ function Comercial() {
 
           {view === "kanban" ? (
             <DevisKanban
-              devis={filteredDevis}
+              devis={kanbanDevis}
               clientsById={clientsById}
               profilesById={profilesById}
               financialEntries={devisFinancialEntries}
@@ -744,9 +744,13 @@ function Comercial() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredDevis.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum devis encontrado</TableCell></TableRow>
-                  ) : filteredDevis.map((d: any) => (
+                  {devisListQuery.isLoading && !devisListQuery.data ? (
+                    <TableRow><TableCell colSpan={7}><LoadingState /></TableCell></TableRow>
+                  ) : devisListQuery.isError ? (
+                    <TableRow><TableCell colSpan={7}><ErrorState onRetry={() => devisListQuery.refetch()} /></TableCell></TableRow>
+                  ) : devisListRows.length === 0 ? (
+                    <TableRow><TableCell colSpan={7}><EmptyState title="Nenhum devis encontrado" description="Ajuste os filtros ou crie um novo devis." /></TableCell></TableRow>
+                  ) : devisListRows.map((d: any) => (
                     <TableRow key={d.id} className="cursor-pointer" onClick={() => navigate({ to: "/comercial/devis/$id", params: { id: d.id } })}>
                       <TableCell className="font-medium">{clientsById[d.client_id]?.name || "—"}</TableCell>
                       <TableCell><Badge variant="outline" className={devisStatusColors[d.status] || ""}>{statusLabels[d.status] || d.status}</Badge></TableCell>
@@ -763,6 +767,15 @@ function Comercial() {
                   ))}
                 </TableBody>
               </Table>
+              <div className="px-4">
+                <Pagination
+                  page={devisPage}
+                  pageSize={DEVIS_PAGE_SIZE}
+                  total={devisListTotal}
+                  onPageChange={setDevisPage}
+                  disabled={devisListQuery.isFetching}
+                />
+              </div>
             </Card>
           )}
         </TabsContent>
