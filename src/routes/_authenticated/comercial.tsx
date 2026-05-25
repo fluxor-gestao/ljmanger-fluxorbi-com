@@ -251,31 +251,35 @@ function Comercial() {
   const profilesById = useMemo(() => Object.fromEntries(profiles.map((p: any) => [p.user_id, p])), [profiles]);
 
   const devisIndicators = useMemo(() => {
-    const acceptedList = devisList.filter((d: any) => d.status === "aceita" || !!d.accepted_at);
-    const sent = devisList.filter((d: any) =>
+    const acceptedList = devisSummary.filter((d: any) => d.status === "aceita" || !!d.accepted_at);
+    const sent = devisSummary.filter((d: any) =>
       !!d.sent_at || d.status === "enviada_ao_cliente" || d.status === "aguardando_aceite" || d.status === "aceita" || !!d.accepted_at,
     ).length;
-    const waiting = devisList.filter((d: any) => d.status === "aguardando_aceite").length;
+    const waiting = devisSummary.filter((d: any) => d.status === "aguardando_aceite").length;
     const acceptedTotal = acceptedList.reduce((sum: number, d: any) => sum + (Number(d.total_amount) || 0), 0);
 
     return {
-      generated: devisList.length,
+      generated: devisSummary.length,
       sent,
       waiting,
       accepted: acceptedList.length,
       acceptedTotal,
     };
-  }, [devisList]);
+  }, [devisSummary]);
 
-  const filteredDevis = useMemo(() => {
-    return devisList.filter((d: any) => {
-      if (view === "list" && filterStatus !== "all" && d.status !== filterStatus) return false;
+  // Kanban usa o resumo completo + filtros client-side (client/data); status fica liberado no Kanban
+  const kanbanDevis = useMemo(() => {
+    return devisSummary.filter((d: any) => {
       if (filterClient !== "all" && d.client_id !== filterClient) return false;
       if (filterStart && d.meeting_date && parseISO(d.meeting_date) < filterStart) return false;
       if (filterEnd && d.meeting_date && parseISO(d.meeting_date) > filterEnd) return false;
       return true;
     });
-  }, [devisList, filterStatus, filterClient, filterStart, filterEnd, view]);
+  }, [devisSummary, filterClient, filterStart, filterEnd]);
+
+  // List usa a query paginada (filtros já server-side)
+  const devisListRows = devisListQuery.data?.rows ?? [];
+  const devisListTotal = devisListQuery.data?.total ?? 0;
 
   const saveClient = useMutation({
     mutationFn: async (form: ClientForm) => {
