@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,11 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { FxTicker } from "@/components/financeiro/FxTicker";
+import { LoadingState, EmptyState, ErrorState } from "@/components/DataStates";
+import { Pagination } from "@/components/Pagination";
+import { rangeFor } from "@/lib/pagination";
+
+const PAGE_SIZE = 50;
 
 const statusColors: Record<string, string> = {
   pendente: "bg-warning/15 text-warning border-warning/30",
@@ -59,6 +64,9 @@ type Entry = {
   fx_status: string | null;
 };
 
+const ENTRY_COLUMNS =
+  "id, entry_date, competence_month, business_unit, movement_account, movement_description, counterparty_name, amount_in, amount_out, entry_type, source_type, conciliation_status, document_reference, bank_account_id, transfer_pair_id, currency, exchange_rate, original_amount, total_brl, fx_status";
+
 type BankAccount = {
   id: string;
   bank_name: string;
@@ -96,6 +104,13 @@ function Financeiro() {
     "consolidado",
   );
 
+  const [page, setPage] = useState(0);
+
+  // Reset página ao mudar filtros / tab
+  useEffect(() => {
+    setPage(0);
+  }, [search, competence, businessFilter, bankFilter, typeFilter, statusFilter, originFilter, realizedFilter, tab]);
+
   // ---------- Dialog Novo Lançamento ----------
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({
@@ -104,26 +119,127 @@ function Financeiro() {
     entry_type: "receita", bank_account_id: "",
   });
 
-  // ---------- Dados ----------
-  const { data: entries = [], isLoading } = useQuery({
-    queryKey: ["financial-entries", competence, businessFilter, search],
+  // ---------- Parâmetros server-side ----------
+  // Combina o filtro "Previsto/Realizado" da tab + dropdown
+  const realizedParam: string | null = useMemo(() => {
+    if (tab === "previsoes") return "previsto";
+    if (tab === "realizados") return "realizado";
+    if (realizedFilter === "previsto") return "previsto";
+    if (realizedFilter === "realizado") return "realizado";
+    return null;
+  }, [tab, realizedFilter]);
+
+  const filterParams = useMemo(() => ({
+    competence: competence || null,
+    business: businessFilter || null,
+    search: search.trim() || null,
+    bank: bankFilter !== "all" ? bankFilter : null,
+    type: typeFilter !== "all" ? typeFilter : null,
+    status: statusFilter !== "all" ? statusFilter : null,
+    origin: originFilter !== "all" ? originFilter : null,
+    realized: realizedParam,
+  }), [competence, businessFilter, search, bankFilter, typeFilter, statusFilter, originFilter, realizedParam]);
+
+  // ---------- Dados — lista paginada ----------
+  const entriesQuery = useQuery({
+    queryKey: ["financial-entries", "list", filterParams, page],
     queryFn: async () => {
+      const [from, to] = rangeFor(page, PAGE_SIZE);
       let q = supabase
         .from("financial_entries")
-        .select("*")
+        .select(ENTRY_COLUMNS, { count: "exact" })
         .order("entry_date", { ascending: false })
-        .limit(500);
-      if (competence) q = q.eq("competence_month", competence);
-      if (businessFilter) q = q.eq("business_unit", businessFilter);
-      if (search)
+        .range(from, to);
+
+      if (filterParams.competence) q = q.eq("competence_month", filterParams.competence);
+      if (filterParams.business) q = q.eq("business_unit", filterParams.business);
+      if (filterParams.bank) q = q.eq("bank_account_id", filterParams.bank);
+      if (filterParams.type) q = q.eq("entry_type", filterParams.type as any);
+      if (filterParams.status) q = q.eq("conciliation_status", filterParams.status as any);
+      if (filterParams.search) {
+        const s = filterParams.search.replace(/[%,]/g, "");
         q = q.or(
-          `movement_description.ilike.%${search}%,counterparty_name.ilike.%${search}%`,
+          `movement_description.ilike.%${s}%,counterparty_name.ilike.%${s}%`,
         );
-      const { data } = await q;
-      return (data ?? []) as Entry[];
+      }
+      // Origem
+      if (filterParams.origin === "transferência") {
+        q = q.eq("entry_type", "transferencia" as any);
+      } else if (filterParams.origin === "ofx") {
+        q = q.in("source_type", ["ofx", "extrato"] as any);
+      } else if (filterParams.origin === "comercial") {
+        q = q.not("document_reference", "is", null).neq("entry_type", "transferencia" as any);
+      } else if (filterParams.origin === "manual") {
+        q = q.eq("source_type", "manual" as any).is("document_reference", null);
+      }
+      // Previsto/Realizado
+      if (filterParams.realized === "previsto") {
+        q = q.eq("conciliation_status", "pendente" as any);
+      } else if (filterParams.realized === "realizado") {
+        q = q.neq("conciliation_status", "pendente" as any);
+      }
+
+      const { data, count, error } = await q;
+      if (error) throw error;
+      return { rows: (data ?? []) as unknown as Entry[], total: count ?? 0 };
     },
+    placeholderData: keepPreviousData,
   });
 
+  const rows = entriesQuery.data?.rows ?? [];
+  const total = entriesQuery.data?.total ?? 0;
+
+  // ---------- Métricas (RPC server-side) ----------
+  const summaryQuery = useQuery({
+    queryKey: ["financial-entries", "summary", filterParams],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("financeiro_summary" as any, {
+        _competence: filterParams.competence,
+        _business: filterParams.business,
+        _search: filterParams.search,
+        _bank: filterParams.bank,
+        _type: filterParams.type,
+        _status: filterParams.status,
+        _origin: filterParams.origin,
+        _realized: filterParams.realized,
+      });
+      if (error) throw error;
+      return data as {
+        saldoInicial: number; totalIn: number; totalOut: number;
+        transfers: number; saldoFinal: number; disponivel: number;
+        previstoIn: number; entries_count: number;
+      };
+    },
+    placeholderData: keepPreviousData,
+  });
+
+  const metrics = summaryQuery.data ?? {
+    saldoInicial: 0, totalIn: 0, totalOut: 0, transfers: 0,
+    saldoFinal: 0, disponivel: 0, previstoIn: 0, entries_count: 0,
+  };
+
+  // ---------- Analítico (RPC server-side) ----------
+  const analiticoQuery = useQuery({
+    queryKey: ["financial-entries", "analitico", filterParams],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("financeiro_analitico" as any, {
+        _competence: filterParams.competence,
+        _business: filterParams.business,
+        _search: filterParams.search,
+        _bank: filterParams.bank,
+        _type: filterParams.type,
+        _status: filterParams.status,
+        _origin: filterParams.origin,
+        _realized: filterParams.realized,
+      });
+      if (error) throw error;
+      return (data ?? []) as Array<{ competence: string; total_in: number; total_out: number }>;
+    },
+    enabled: tab === "analitico",
+    placeholderData: keepPreviousData,
+  });
+
+  // ---------- Bancos ----------
   const { data: bankAccounts = [] } = useQuery({
     queryKey: ["bank-accounts"],
     queryFn: async () => {
@@ -148,48 +264,6 @@ function Financeiro() {
     if (!b) return "—";
     return `${b.bank_name}${b.account_number ? ` · ${b.account_number}` : ""}`;
   };
-
-  // ---------- Aplica filtros locais ----------
-  const filtered = useMemo(() => {
-    return entries.filter((e) => {
-      if (bankFilter !== "all" && e.bank_account_id !== bankFilter) return false;
-      if (typeFilter !== "all" && (e.entry_type ?? "") !== typeFilter) return false;
-      if (statusFilter !== "all" && e.conciliation_status !== statusFilter) return false;
-      if (originFilter !== "all" && getOrigem(e) !== originFilter) return false;
-      if (realizedFilter === "previsto" && !isPrevisto(e)) return false;
-      if (realizedFilter === "realizado" && isPrevisto(e)) return false;
-      return true;
-    });
-  }, [entries, bankFilter, typeFilter, statusFilter, originFilter, realizedFilter]);
-
-  // ---------- Visíveis por tab ----------
-  const visible = useMemo(() => {
-    if (tab === "previsoes") return filtered.filter(isPrevisto);
-    if (tab === "realizados") return filtered.filter((e) => !isPrevisto(e));
-    return filtered;
-  }, [filtered, tab]);
-
-  // ---------- Métricas dos cards ----------
-  const metrics = useMemo(() => {
-    const realized = filtered.filter((e) => !isPrevisto(e) && e.entry_type !== "transferencia");
-    const totalIn = realized.reduce((s, e) => s + Number(e.amount_in || 0), 0);
-    const totalOut = realized.reduce((s, e) => s + Number(e.amount_out || 0), 0);
-    const transfers = filtered
-      .filter((e) => e.entry_type === "transferencia")
-      .reduce((s, e) => s + Number(e.amount_in || 0) + Number(e.amount_out || 0), 0);
-    const previstoIn = filtered
-      .filter((e) => isPrevisto(e) && e.entry_type !== "transferencia")
-      .reduce((s, e) => s + Number(e.amount_in || 0), 0);
-    return {
-      saldoInicial: 0, // placeholder — pode evoluir com tabela de saldos
-      totalIn,
-      totalOut,
-      transfers,
-      saldoFinal: totalIn - totalOut,
-      disponivel: totalIn - totalOut + previstoIn * 0,
-      previstoIn,
-    };
-  }, [filtered]);
 
   // ---------- Novo lançamento ----------
   const createEntry = useMutation({
@@ -229,7 +303,7 @@ function Financeiro() {
       "Conta Mov.", "Descrição", "Fornecedor/Cliente",
       "Entrada", "Saída", "Status", "Previsto/Realizado",
     ];
-    const rows = visible.map((e) => [
+    const xlsxRows = rows.map((e) => [
       e.entry_date,
       e.competence_month,
       e.business_unit,
@@ -244,37 +318,22 @@ function Financeiro() {
       e.conciliation_status,
       isPrevisto(e) ? "Previsto" : "Realizado",
     ]);
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...xlsxRows]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Movimentação");
     XLSX.writeFile(wb, "movimentacao_financeira.xlsx");
   };
 
-  // ---------- Agrupamento por banco (Fluxo) ----------
+  // ---------- Agrupamento por banco (Fluxo) — sobre a página visível ----------
   const grouped = useMemo(() => {
     const map = new Map<string, Entry[]>();
-    visible.forEach((e) => {
+    rows.forEach((e) => {
       const k = e.bank_account_id ?? "__none__";
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(e);
     });
     return Array.from(map.entries());
-  }, [visible]);
-
-  // ---------- Receitas x Despesas (analítico por competência) ----------
-  const analitico = useMemo(() => {
-    const map = new Map<string, { in: number; out: number }>();
-    filtered
-      .filter((e) => e.entry_type !== "transferencia")
-      .forEach((e) => {
-        const k = e.competence_month ?? "—";
-        if (!map.has(k)) map.set(k, { in: 0, out: 0 });
-        const acc = map.get(k)!;
-        acc.in += Number(e.amount_in || 0);
-        acc.out += Number(e.amount_out || 0);
-      });
-    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [filtered]);
+  }, [rows]);
 
   // ---------- Render ----------
   return (
@@ -503,64 +562,125 @@ function Financeiro() {
           <TabsTrigger value="analitico">Receitas × Despesas</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="consolidado" className="mt-4">
-          <EntriesTable rows={visible} bankLabel={bankLabel} isLoading={isLoading} />
+        <TabsContent value="consolidado" className="mt-4 space-y-2">
+          <EntriesTable
+            rows={rows}
+            bankLabel={bankLabel}
+            isLoading={entriesQuery.isLoading}
+            isError={entriesQuery.isError}
+            onRetry={() => entriesQuery.refetch()}
+          />
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onPageChange={setPage}
+            disabled={entriesQuery.isFetching}
+          />
         </TabsContent>
-        <TabsContent value="previsoes" className="mt-4">
-          <EntriesTable rows={visible} bankLabel={bankLabel} isLoading={isLoading} />
+        <TabsContent value="previsoes" className="mt-4 space-y-2">
+          <EntriesTable
+            rows={rows}
+            bankLabel={bankLabel}
+            isLoading={entriesQuery.isLoading}
+            isError={entriesQuery.isError}
+            onRetry={() => entriesQuery.refetch()}
+          />
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onPageChange={setPage}
+            disabled={entriesQuery.isFetching}
+          />
         </TabsContent>
-        <TabsContent value="realizados" className="mt-4">
-          <EntriesTable rows={visible} bankLabel={bankLabel} isLoading={isLoading} />
+        <TabsContent value="realizados" className="mt-4 space-y-2">
+          <EntriesTable
+            rows={rows}
+            bankLabel={bankLabel}
+            isLoading={entriesQuery.isLoading}
+            isError={entriesQuery.isError}
+            onRetry={() => entriesQuery.refetch()}
+          />
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onPageChange={setPage}
+            disabled={entriesQuery.isFetching}
+          />
         </TabsContent>
 
         <TabsContent value="fluxo" className="mt-4 space-y-4">
-          {grouped.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhum lançamento</CardContent></Card>
-          ) : grouped.map(([key, list]) => {
-            const subIn = list.reduce((s, e) => s + Number(e.amount_in || 0), 0);
-            const subOut = list.reduce((s, e) => s + Number(e.amount_out || 0), 0);
-            return (
-              <Card key={key} className="overflow-hidden">
-                <div className="flex items-center justify-between bg-muted/40 px-4 py-2 border-b">
-                  <div className="font-display font-semibold">
-                    {key === "__none__" ? "Sem banco vinculado (previsões)" : bankLabel(key)}
-                  </div>
-                  <div className="flex gap-4 text-sm tabular-nums">
-                    <span className="text-success">+ {fmt(subIn)}</span>
-                    <span className="text-destructive">− {fmt(subOut)}</span>
-                    <span className="font-semibold">{fmt(subIn - subOut)}</span>
-                  </div>
-                </div>
-                <EntriesTable rows={list} bankLabel={bankLabel} isLoading={false} hideBank />
-              </Card>
-            );
-          })}
+          {entriesQuery.isLoading ? (
+            <Card><CardContent><LoadingState /></CardContent></Card>
+          ) : grouped.length === 0 ? (
+            <Card><CardContent><EmptyState title="Nenhum lançamento" description="Nenhum dado na página atual." /></CardContent></Card>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Agrupamento por banco refere-se aos lançamentos visíveis nesta página.
+              </p>
+              {grouped.map(([key, list]) => {
+                const subIn = list.reduce((s, e) => s + Number(e.amount_in || 0), 0);
+                const subOut = list.reduce((s, e) => s + Number(e.amount_out || 0), 0);
+                return (
+                  <Card key={key} className="overflow-hidden">
+                    <div className="flex items-center justify-between bg-muted/40 px-4 py-2 border-b">
+                      <div className="font-display font-semibold">
+                        {key === "__none__" ? "Sem banco vinculado (previsões)" : bankLabel(key)}
+                      </div>
+                      <div className="flex gap-4 text-sm tabular-nums">
+                        <span className="text-success">+ {fmt(subIn)}</span>
+                        <span className="text-destructive">− {fmt(subOut)}</span>
+                        <span className="font-semibold">{fmt(subIn - subOut)}</span>
+                      </div>
+                    </div>
+                    <EntriesTable rows={list} bankLabel={bankLabel} isLoading={false} isError={false} hideBank />
+                  </Card>
+                );
+              })}
+            </>
+          )}
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onPageChange={setPage}
+            disabled={entriesQuery.isFetching}
+          />
         </TabsContent>
 
         <TabsContent value="analitico" className="mt-4">
           <Card className="overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Competência</TableHead>
-                  <TableHead className="text-right">Receitas</TableHead>
-                  <TableHead className="text-right">Despesas</TableHead>
-                  <TableHead className="text-right">Resultado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {analitico.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Sem dados</TableCell></TableRow>
-                ) : analitico.map(([k, v]) => (
-                  <TableRow key={k}>
-                    <TableCell className="font-medium">{k}</TableCell>
-                    <TableCell className="text-right text-success tabular-nums">{fmt(v.in)}</TableCell>
-                    <TableCell className="text-right text-destructive tabular-nums">{fmt(v.out)}</TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">{fmt(v.in - v.out)}</TableCell>
+            {analiticoQuery.isLoading ? (
+              <CardContent><LoadingState /></CardContent>
+            ) : analiticoQuery.isError ? (
+              <CardContent><ErrorState onRetry={() => analiticoQuery.refetch()} /></CardContent>
+            ) : (analiticoQuery.data ?? []).length === 0 ? (
+              <CardContent><EmptyState title="Sem dados" description="Nenhum lançamento para os filtros atuais." /></CardContent>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Competência</TableHead>
+                    <TableHead className="text-right">Receitas</TableHead>
+                    <TableHead className="text-right">Despesas</TableHead>
+                    <TableHead className="text-right">Resultado</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {(analiticoQuery.data ?? []).map((r) => (
+                    <TableRow key={r.competence}>
+                      <TableCell className="font-medium">{r.competence}</TableCell>
+                      <TableCell className="text-right text-success tabular-nums">{fmt(Number(r.total_in))}</TableCell>
+                      <TableCell className="text-right text-destructive tabular-nums">{fmt(Number(r.total_out))}</TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">{fmt(Number(r.total_in) - Number(r.total_out))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </Card>
         </TabsContent>
       </Tabs>
@@ -570,14 +690,13 @@ function Financeiro() {
         <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <CircleDashed className="h-4 w-4" />
-            <span>{visible.length} lançamento(s) na visão atual</span>
+            <span>{metrics.entries_count} lançamento(s) na visão atual</span>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1 tabular-nums">
             <span><span className="text-muted-foreground">Entradas:</span> <span className="font-semibold text-success">{fmt(metrics.totalIn)}</span></span>
             <span><span className="text-muted-foreground">Saídas:</span> <span className="font-semibold text-destructive">{fmt(metrics.totalOut)}</span></span>
             <span><span className="text-muted-foreground">Transferências:</span> <span className="font-semibold text-primary">{fmt(metrics.transfers)}</span></span>
             <span><span className="text-muted-foreground">Saldo Final:</span> <span className="font-bold">{fmt(metrics.saldoFinal)}</span></span>
-            
           </div>
         </div>
       </div>
@@ -604,13 +723,24 @@ function SummaryCard({
 }
 
 function EntriesTable({
-  rows, bankLabel, isLoading, hideBank,
+  rows, bankLabel, isLoading, isError, hideBank, onRetry,
 }: {
   rows: Entry[];
   bankLabel: (id: string | null) => string;
   isLoading: boolean;
+  isError: boolean;
   hideBank?: boolean;
+  onRetry?: () => void;
 }) {
+  if (isLoading) {
+    return <Card><CardContent><LoadingState /></CardContent></Card>;
+  }
+  if (isError) {
+    return <Card><CardContent><ErrorState onRetry={onRetry} /></CardContent></Card>;
+  }
+  if (rows.length === 0) {
+    return <Card><CardContent><EmptyState title="Nenhum lançamento encontrado" description="Ajuste os filtros e tente novamente." /></CardContent></Card>;
+  }
   return (
     <Card className="overflow-hidden">
       <Table>
@@ -630,19 +760,7 @@ function EntriesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {isLoading ? (
-            <TableRow>
-              <TableCell colSpan={hideBank ? 10 : 11} className="text-center py-8 text-muted-foreground">
-                Carregando...
-              </TableCell>
-            </TableRow>
-          ) : rows.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={hideBank ? 10 : 11} className="text-center py-8 text-muted-foreground">
-                Nenhum lançamento encontrado
-              </TableCell>
-            </TableRow>
-          ) : rows.map((e) => {
+          {rows.map((e) => {
             const previsto = isPrevisto(e);
             return (
               <TableRow key={e.id} className="even:bg-muted/20 hover:bg-muted/40">

@@ -896,6 +896,36 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      financeiro_analitico: {
+        Args: {
+          _bank?: string
+          _business?: string
+          _competence?: string
+          _origin?: string
+          _realized?: string
+          _search?: string
+          _status?: string
+          _type?: string
+        }
+        Returns: {
+          competence: string
+          total_in: number
+          total_out: number
+        }[]
+      }
+      financeiro_summary: {
+        Args: {
+          _bank?: string
+          _business?: string
+          _competence?: string
+          _origin?: string
+          _realized?: string
+          _search?: string
+          _status?: string
+          _type?: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
