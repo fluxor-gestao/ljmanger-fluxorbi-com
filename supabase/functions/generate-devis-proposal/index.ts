@@ -100,13 +100,17 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { meeting_report, client_name, total_amount, language } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    const { meeting_report, client_name, total_amount, language, tier } = await req.json();
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada");
     if (!meeting_report) throw new Error("meeting_report é obrigatório");
 
     const lang: Lang = (["pt", "fr", "en", "es"].includes(language) ? language : "pt") as Lang;
     const S = STRUCTURE[lang];
+
+    // Tier de qualidade: 'final' usa gpt-5 (refinamento de proposta enviada ao cliente),
+    // 'draft' (padrão) usa gpt-5-mini para a primeira geração.
+    const model = tier === "final" ? "gpt-5" : "gpt-5-mini";
 
     const hasTotal = typeof total_amount === "number" && total_amount > 0;
 
