@@ -480,23 +480,29 @@ function DevisDetail() {
               <div className="space-y-2">
                 <Textarea rows={8} value={form.meeting_report ?? ""} onChange={(e) => setForm({ ...form, meeting_report: e.target.value })} placeholder="Descreva a reunião em detalhes para a IA gerar sugestões de proposta..." />
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleGenerate("draft")}
-                    disabled={generating || !form.meeting_report?.trim()}
-                  >
-                    {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                    {generating ? "Gerando..." : "Gerar proposta (GPT-5 mini)"}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => handleGenerate("final")}
-                    disabled={generating || !form.meeting_report?.trim()}
-                    title="Refina a proposta usando GPT-5 — recomendado para a versão final enviada ao cliente"
-                  >
-                    {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                    Refinar com GPT-5
-                  </Button>
+                  {form.proposal_structure?.trim() ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        if (window.confirm("Isto irá sobrescrever os campos da proposta com uma versão refinada. Continuar?")) {
+                          handleGenerate("final");
+                        }
+                      }}
+                      disabled={generating || !form.meeting_report?.trim()}
+                    >
+                      {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                      {generating ? "Refinando..." : "Refinar proposta"}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={() => handleGenerate("draft")}
+                      disabled={generating || !form.meeting_report?.trim()}
+                    >
+                      {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                      {generating ? "Gerando..." : "Gerar proposta"}
+                    </Button>
+                  )}
                 </div>
               </div>
             ) : <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{view("meeting_report", devis.meeting_report || "—")}</p>}
