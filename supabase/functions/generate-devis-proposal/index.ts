@@ -100,13 +100,17 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { meeting_report, client_name, total_amount, language } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    const { meeting_report, client_name, total_amount, language, tier } = await req.json();
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada");
     if (!meeting_report) throw new Error("meeting_report é obrigatório");
 
     const lang: Lang = (["pt", "fr", "en", "es"].includes(language) ? language : "pt") as Lang;
     const S = STRUCTURE[lang];
+
+    // Tier de qualidade: 'final' usa gpt-5 (refinamento de proposta enviada ao cliente),
+    // 'draft' (padrão) usa gpt-5-mini para a primeira geração.
+    const model = tier === "final" ? "gpt-5" : "gpt-5-mini";
 
     const hasTotal = typeof total_amount === "number" && total_amount > 0;
 
@@ -185,14 +189,14 @@ ${meeting_report}
 ${hasTotal ? `Valor total alvo: R$ ${total_amount}\n` : "O cliente NÃO informou valor total — estime conforme as faixas do system prompt.\n"}
 Gere a proposta jurídica completa em ${S.langName}, seguindo TODAS as seções obrigatórias (I a VII) com os títulos e labels EXATOS fornecidos. Não use bilíngue, não use barras, não misture idiomas. Personalize tudo com base no relatório acima.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -301,15 +305,15 @@ Gere a proposta jurídica completa em ${S.langName}, seguindo TODAS as seções 
     });
 
     if (response.status === 429) {
-      return new Response(JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em instantes." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Limite de requisições da OpenAI atingido. Tente novamente em instantes." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    if (response.status === 402) {
-      return new Response(JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos em Settings → Workspace → Usage." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (response.status === 401) {
+      return new Response(JSON.stringify({ error: "Chave OPENAI_API_KEY inválida." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     if (!response.ok) {
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      throw new Error(`AI gateway error: ${response.status}`);
+      console.error("OpenAI error:", response.status, t);
+      throw new Error(`OpenAI error: ${response.status}`);
     }
 
     const result = await response.json();
@@ -317,7 +321,7 @@ Gere a proposta jurídica completa em ${S.langName}, seguindo TODAS as seções 
     if (!toolCall) throw new Error("Resposta sem tool_call");
     const proposal = JSON.parse(toolCall.function.arguments);
 
-    return new Response(JSON.stringify({ proposal }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ proposal, model_used: model }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("generate-devis-proposal error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
