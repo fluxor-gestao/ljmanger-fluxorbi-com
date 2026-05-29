@@ -1,96 +1,136 @@
+# Diagnóstico — Tradução da Proposta + Substituição da IA
 
-# Bloco 2 — Comercial, Financeiro, Conciliação
+## Parte 1 — Por que a proposta em português aparece com francês
 
-## Diagnóstico
+**Não é a IA que está "errando" a tradução.** O problema está no **system prompt** de `supabase/functions/generate-devis-proposal/index.ts`. Ele instrui o modelo a montar a estrutura **sempre** com cabeçalhos e labels bilíngues em francês, independentemente do idioma escolhido:
 
-### Comercial (`src/routes/_authenticated/comercial.tsx`)
-Queries atuais:
-- `clients` → `select("*")` sem limit, sem filtro server-side.
-- `devis` → `select("*")` sem limit, sem filtros (filtros rodam em memória via `filteredDevis`).
-- `profiles-all` → leve, ~25 linhas, mantém como está.
-- `devis-financial-entries` → carrega todos os FE com `document_reference` para calcular indicadores.
-- `devis-services` → carrega todos os services com `devis_id` para indicadores.
+```
+## I. Identification des Parties / Identificação das Partes
+- **PRESTATAIRE / CONTRATADO:** ...
+- **CLIENT / CONTRATANTE:** ...
+## II. Contexte et Objet du Contrat
+### Étendue des Services / Escopo de Serviços
+**A) ... — VALOR BRL**
+*Description :* ... *Livrables :* ... *Parties prenantes :* ...
+*Indicateurs de succès :* ... *Délai :* ...
+## III. Honoraires / Honorários
+## IV. Délai et Calendrier
+## V. Obligations des Parties
+## VI. Confidentialité et Propriété Intellectuelle
+## VII. Dispositions Finales
+```
 
-Problema central: indicadores (`devisIndicators`) e Kanban dependem da lista inteira de devis carregada em memória. Paginar a tabela quebra os indicadores e o Kanban.
+Mesmo dizendo "100% em {langName}, sem misturar idiomas", o template literal acima **já contém o francês fixo**, então o modelo replica. Resultado: PT com seções em FR (exatamente o que aparece no print do cliente). EN e ES sofrem do mesmo problema.
 
-### Financeiro (`src/routes/_authenticated/financeiro.tsx`)
-Queries atuais:
-- `financial-entries` → `select("*")` com `.limit(500)` fixo. Filtros de competence/business/search já vão ao banco, mas bankFilter/typeFilter/statusFilter/originFilter/realizedFilter rodam em memória.
-- Métricas (`metrics`, `analitico`) calculadas no frontend sobre `filtered`. Se a base crescer, o `.limit(500)` corta dados e os totais ficam incorretos.
+A função `translate-devis` (tradução pós-geração) não resolve porque ela traduz os campos do devis já salvos, mas a estrutura inicial **nasce bilíngue** — o cliente vê PT misturado antes de qualquer "traduzir".
 
-### Conciliação (`src/routes/_authenticated/conciliacao.tsx`)
-Queries atuais:
-- `bank-statements` → `select("*")` `.limit(200)`.
-- `financial-entries-conciliation` → `select("*")` `.eq pendente` `.limit(200)`.
-- `conciliation-matches` → `select("*")` sem limit.
+Observação secundária: a palavra "attentes" aparece dentro das instruções em PT — vazamento menor, não chega ao output, mas mostra que o prompt foi escrito em modo bilíngue.
 
-Problema central: matching automático (`suggestMatches`, `autoSuggest`, `matchScore`, `pairedRows`) percorre as duas listas inteiras em memória cruzando-as. Paginar essas listas quebra o algoritmo de pareamento.
+### Correção (Bloco A — só prompt, sem mudar de IA)
 
-## Plano de execução
+1. Em `generate-devis-proposal/index.ts`, separar **um conjunto de cabeçalhos por idioma** (PT / FR / EN / ES) e injetar no system prompt apenas o conjunto do `lang` escolhido. Exemplo PT:
 
-### Passo 1 — Comercial
-**Princípio:** separar "dados para indicadores/Kanban" (resumo leve, agregado no banco) de "dados para tabela" (paginado).
+```
+## I. Identificação das Partes
+- **CONTRATADO:** Lundgaard Jensen ...
+- **CONTRATANTE:** {cliente}
+## II. Contexto e Objeto do Contrato
+### Escopo de Serviços
+**A) Título — BRL X**
+*Descrição:* ... *Entregáveis:* ... *Partes envolvidas:* ...
+*Indicadores de sucesso:* ... *Prazo:* ...
+## III. Honorários
+## IV. Prazo e Cronograma
+## V. Obrigações das Partes
+## VI. Confidencialidade e Propriedade Intelectual
+## VII. Disposições Finais
+```
+E equivalentes nativos em FR, EN, ES (sem "/" bilíngue).
 
-1. Criar agregados server-side para os 4 cards e Kanban:
-   - Indicadores: usar `bi_kpis_comercial` já existente (já roda no banco) OU adicionar uma query simples `select('status, accepted_at, sent_at, total_amount').range(0, 5000)` apenas para os cards/Kanban — mantém o comportamento atual sem `select("*")`.
-   - Kanban continua usando esse payload reduzido (precisa de todos os devis para agrupar por status).
-2. Tabela de devis (modo "list"):
-   - Query separada `['devis','list', {page, status, businessUnit, clientId, q}]` com paginação server-side (20/pág), colunas explícitas (`id, devis_number, title, status, total_amount, business_unit, client_id, created_at, sent_at, accepted_at, deadline_date, commercial_responsible, meeting_date`), filtros `eq` + `ilike` no Supabase, `order('created_at', desc)`, `range(...)`, `count: 'exact'`, `placeholderData: keepPreviousData`.
-3. Aba Clientes:
-   - Substituir `select("*")` por colunas explícitas (`id, name, email, phone, document, type, notes, business_unit_id, active`).
-   - Paginar 50/pág; busca `ilike` server-side por `name`/`email`/`document`.
-   - Manter `clientsById` (lookup) com query separada `['clients','lookup']` com colunas mínimas (`id, name, business_unit_id, type`) carregando até 5000 — necessário para resolver nomes na tabela de devis sem N+1.
-4. `devis-financial-entries` e `devis-services` continuam (são lookups agregados para badges); mantém colunas explícitas como já estão.
-5. `LoadingState`/`EmptyState`/`ErrorState` na tabela de devis e na aba Clientes; `<Pagination/>` no rodapé de ambas.
+2. Reforçar regra anti-mistura: "Use **somente** os títulos abaixo, sem versão bilíngue, sem barras `/`, sem palavras de outros idiomas (proibido: PRESTATAIRE, Description :, Livrables :, Délai :, Honoraires quando lang≠fr…)."
 
-### Passo 2 — Financeiro
-1. Query principal `['financial-entries', {page, competence, businessUnit, bank, type, status, origin, realized, search}]`:
-   - Colunas explícitas (substituir `select("*")` pela lista do tipo `Entry`).
-   - Todos os filtros via `eq`/`ilike` no Supabase; `range`+`count:'exact'`; `order entry_date desc`; `placeholderData: keepPreviousData`.
-   - "Origem" e "Realizado/Previsto" mapeados para condições SQL:
-     - origem `transferência` → `eq('entry_type','transferencia')`
-     - origem `ofx` → `in('source_type', ['ofx','extrato'])`
-     - origem `comercial` → `not('document_reference','is',null)` + `neq('entry_type','transferencia')`
-     - origem `manual` → `eq('source_type','manual')` + `is('document_reference', null)`
-     - realizado → `neq('conciliation_status','pendente')`; previsto → `eq('conciliation_status','pendente')`.
-   - 50/pág.
-2. **Métricas/Analítico (gargalo real):** criar (nova migration) duas RPCs no banco para não depender dos 500 registros em memória:
-   - `financeiro_summary(_competence, _business_unit, _search, _bank, _type, _status, _origin, _realized) returns jsonb` → totais (in/out/transferências/previstoIn/saldoFinal) **respeitando os mesmos filtros**.
-   - `financeiro_analitico(... mesmos filtros)` → agregado por `competence_month` (in/out).
-   - Useremos `useQuery` separadas que chamam `supabase.rpc(...)` com a mesma queryKey dos filtros. Sem cálculo no frontend.
-3. Aba Fluxo (agrupamento por banco) e aba Analítico passam a usar a RPC ou paginação por banco — neste sprint, mantemos o agrupamento da página atual (já filtrado/paginado) com aviso de "visível na página".
-4. `bank-accounts` mantém como está (lista pequena, já tem colunas explícitas).
+3. Eliminar palavras-soltas FR no corpo das instruções (`attentes` → `expectativas` etc.).
 
-### Passo 3 — Conciliação
-1. **Não quebrar o matching:** Separar "lista exibida" de "universo para matching".
-   - `bank-statements-display` (paginada 50/pág, colunas explícitas: `id, transaction_date, description, amount, direction, conciliation_status, bank_account_id, document_number`, filtro `ilike` no `description` server-side, ordem por data desc, `count:'exact'`). Usada na tabela.
-   - `financial-entries-conciliation` (paginada 50/pág, colunas explícitas) usada na tabela de FE.
-2. Matching automático (`suggestMatches`): mover para o banco como RPC `suggest_conciliation_matches()` que faz o cross-join com janela de 5 dias e tolerância de centavos, inserindo direto em `conciliation_matches`. Frontend só dispara a RPC. Evita carregar tudo no cliente.
-3. `autoSuggest` em memória (usado no layout "paired"): substituir por uma query pontual `select(...).gte/lte/eq(amount/date/direction)` por linha visível — chamada via `useQueries` em cima das `pageStatements`. Mantém UX.
-4. `conciliation-matches`: já é pequena por natureza, mas adiciona colunas explícitas (`id, bank_statement_entry_id, financial_entry_id, status, match_score, match_type, created_at`) e `.in('bank_statement_entry_id', visibleIds)` para trazer só os matches dos extratos visíveis.
-5. `LoadingState`/`EmptyState`/`ErrorState` + `<Pagination/>` nas duas tabelas.
+4. `translate-devis` segue intacta (continua útil para trocar idioma no preview depois).
 
-## Arquivos impactados
-- `src/routes/_authenticated/comercial.tsx`
-- `src/routes/_authenticated/financeiro.tsx`
-- `src/routes/_authenticated/conciliacao.tsx`
-- Nova migration: `supabase/migrations/<timestamp>_financeiro_e_conciliacao_rpcs.sql` com:
-  - `financeiro_summary(...)` (security definer, stable)
-  - `financeiro_analitico(...)` (stable)
-  - `suggest_conciliation_matches()` (security definer)
+**Impacto Bloco A:** apenas `supabase/functions/generate-devis-proposal/index.ts`. Sem schema, sem RLS, sem layout. Devis já gerados não mudam — regerar manualmente quem precisar.
 
-## Riscos e mitigação
-- **Comercial — indicadores/Kanban:** Kanban precisa de todos os devis; manter uma query separada leve (`select` colunas mínimas, `range(0, 4999)`) só para Kanban+indicadores. Quando a base ultrapassar 5k, migrar Kanban para "carregar por coluna/status".
-- **Financeiro — totais:** depender das novas RPCs com os mesmos filtros. Testar igualdade dos números antes/depois com dataset atual.
-- **Conciliação — matching:** mover para SQL evita carregar tudo no cliente; o algoritmo atual é simples (amount ± 0.01, data ± 5 dias) → traduz 1:1 em SQL.
-- **Tipos TS:** ao trocar `select("*")` por colunas, derivar tipos de `Database['public']['Tables'][T]['Row']` com `Pick<...>` para evitar quebras.
-- **Realtime no Comercial:** manter as 3 subscriptions; invalidam queries paginadas (re-fetch da página atual) sem efeito colateral.
+---
 
-## Ordem de aplicação
-1. Comercial (passo 1) → reportar.
-2. Financeiro (passo 2 — incluindo a migration das RPCs) → reportar.
-3. Conciliação (passo 3 — incluindo a RPC de matching) → reportar.
+## Parte 2 — Substituir a IA atual pela chave OpenAI do cliente
 
-Sem mudanças de RLS, matriz de papéis, regras de negócio ou layout.
+### Como está hoje
 
-Posso iniciar?
+Toda IA passa pelo **Lovable AI Gateway** (`ai.gateway.lovable.dev`) usando `LOVABLE_API_KEY`. Quatro funções:
+
+| Função | Modelo atual | Uso |
+|---|---|---|
+| `generate-devis-proposal` | `google/gemini-2.5-flash` (tool calling) | Gera a proposta |
+| `translate-devis` | `google/gemini-2.5-flash` (JSON mode) | Traduz proposta |
+| `analyze-meeting-report` | `google/gemini-2.5-flash` | Analisa ata de reunião |
+| `parse-bank-statement-pdf` | `google/gemini-2.5-flash` (visão) | Lê PDF de extrato bancário |
+
+### Estratégia de modelos OpenAI (definida pelo cliente)
+
+> **Regra geral: processar tudo com `gpt-5-mini`. Refinar apenas os documentos mais importantes com `gpt-5`.**
+
+Mapeamento por função:
+
+| Função | Modelo padrão | Quando usa `gpt-5` (refinamento) |
+|---|---|---|
+| `analyze-meeting-report` | `gpt-5-mini` | Nunca (passo intermediário, alto volume) |
+| `translate-devis` | `gpt-5-mini` | Nunca (tradução é mecânica) |
+| `parse-bank-statement-pdf` | `gpt-5-mini` (com visão) | Nunca (extração estruturada) |
+| `generate-devis-proposal` | `gpt-5-mini` na primeira geração | **`gpt-5` ao gerar a versão final da proposta** que será enviada ao cliente — documento mais sensível |
+
+**Como implementar o "refinamento":**
+
+- `generate-devis-proposal` passa a aceitar um parâmetro opcional `tier: 'draft' | 'final'` no body.
+  - `'draft'` (padrão) → `gpt-5-mini` — usado no clique inicial "Gerar proposta com IA".
+  - `'final'` → `gpt-5` — usado num novo botão "Refinar com GPT-5" ao lado, OU disparado automaticamente quando o usuário clica "Enviar proposta ao cliente" (a definir no momento da implementação).
+- O frontend (`comercial_.devis.$id.tsx`) ganha o segundo botão. Sem mudar layout drasticamente — apenas um botão secundário ao lado do atual.
+- Fallback: se `gpt-5` falhar (rate limit/erro), avisa o usuário e mantém a versão draft salva.
+
+### Mudanças técnicas em cada função
+
+Para cada uma das 4 funções:
+- URL: `https://ai.gateway.lovable.dev/v1/chat/completions` → `https://api.openai.com/v1/chat/completions`
+- Header: `Authorization: Bearer ${LOVABLE_API_KEY}` → `Authorization: Bearer ${OPENAI_API_KEY}`
+- Modelo: `google/gemini-2.5-flash` → `gpt-5-mini` (ou `gpt-5` quando `tier==='final'` em `generate-devis-proposal`)
+- Manter `tools` / `tool_choice` e `response_format: { type: "json_object" }` (compatíveis com OpenAI).
+- Tratamento de erros HTTP da OpenAI: 401 (chave inválida), 429 (rate limit), 400 (validação), 500 (upstream).
+- `parse-bank-statement-pdf` continua usando visão (`gpt-5-mini` suporta input de imagem; PDF precisa ser convertido em imagens página a página, ou enviado via Files API — validar no momento da implementação).
+
+### Nova secret necessária
+
+- `OPENAI_API_KEY` — pedida via tool de secrets (você cola o valor numa janela segura, não compartilha no chat).
+
+### Trade-offs aceitos
+
+- Sai do Lovable AI Gateway → perde observabilidade unificada e fallback automático do gateway.
+- Custos passam a ser cobrados direto na sua conta OpenAI (era esse o objetivo).
+- Rate limits agora são os da sua conta OpenAI — `gpt-5` tem TPM mais restrito que `gpt-5-mini`, daí a estratégia de só usar `gpt-5` no refinamento final.
+
+---
+
+## Ordem de execução proposta
+
+1. **Bloco A — Tradução (não depende da IA escolhida):** corrigir cabeçalhos bilíngues em `generate-devis-proposal` → reportar.
+2. **Bloco B1 — Secret:** adicionar `OPENAI_API_KEY` (interação tua).
+3. **Bloco B2 — Migrar funções "high-volume" para OpenAI `gpt-5-mini`:** `analyze-meeting-report`, `translate-devis`, `parse-bank-statement-pdf` → testar cada uma → reportar.
+4. **Bloco B3 — `generate-devis-proposal` com tiering:** `gpt-5-mini` no draft + botão "Refinar com GPT-5" usando `gpt-5` → testar → reportar.
+
+Sem mudanças de RLS, matriz de papéis, regras de negócio ou layout além do botão extra de refinamento.
+
+## Arquivos que serão tocados
+
+- Bloco A: `supabase/functions/generate-devis-proposal/index.ts` (prompt).
+- Bloco B2: `supabase/functions/{analyze-meeting-report,translate-devis,parse-bank-statement-pdf}/index.ts` (URL + header + modelo + erros).
+- Bloco B3: `supabase/functions/generate-devis-proposal/index.ts` (parâmetro `tier` + modelo dinâmico) + `src/routes/_authenticated/comercial_.devis.$id.tsx` (botão "Refinar com GPT-5").
+- Nova secret: `OPENAI_API_KEY`.
+
+## Confirmar antes de implementar
+
+1. Aplico já o **Bloco A** (cabeçalhos por idioma)?
+2. Para o **Bloco B3**, prefere que `gpt-5` seja disparado por **botão manual** ("Refinar com GPT-5") ou **automaticamente** ao clicar "Enviar ao cliente"?
+3. Posso pedir a secret `OPENAI_API_KEY` agora?

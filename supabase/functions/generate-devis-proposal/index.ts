@@ -4,6 +4,98 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type Lang = "pt" | "fr" | "en" | "es";
+
+// Cabeçalhos e labels nativos por idioma — SEM bilíngue, SEM barras "/"
+const STRUCTURE: Record<Lang, {
+  langName: string;
+  title: string;
+  sec1: string; provider: string; client: string;
+  sec2: string;
+  scope: string;
+  lblDesc: string; lblDeliv: string; lblParties: string; lblMetrics: string; lblDuration: string;
+  sec3: string;
+  lblTotal: string; lblDown: string; lblBalance: string;
+  sec4: string;
+  sec5: string;
+  sec6: string;
+  sec7: string;
+  forbidden: string[];
+}> = {
+  pt: {
+    langName: "português do Brasil",
+    title: "Título da proposta",
+    sec1: "I. Identificação das Partes",
+    provider: "CONTRATADO",
+    client: "CONTRATANTE",
+    sec2: "II. Contexto e Objeto do Contrato",
+    scope: "Escopo de Serviços",
+    lblDesc: "Descrição", lblDeliv: "Entregáveis", lblParties: "Partes envolvidas",
+    lblMetrics: "Indicadores de sucesso", lblDuration: "Prazo",
+    sec3: "III. Honorários",
+    lblTotal: "Total", lblDown: "Entrada de 50%", lblBalance: "Saldo de 50%",
+    sec4: "IV. Prazo e Cronograma",
+    sec5: "V. Obrigações das Partes",
+    sec6: "VI. Confidencialidade e Propriedade Intelectual",
+    sec7: "VII. Disposições Finais",
+    forbidden: ["PRESTATAIRE", "CLIENT :", "Identification des Parties", "Contexte et Objet", "Étendue des Services", "Description :", "Livrables", "Parties prenantes", "Indicateurs de succès", "Délai", "Honoraires", "Calendrier", "Obligations des Parties", "Confidentialité", "Dispositions Finales", "attentes"],
+  },
+  fr: {
+    langName: "français",
+    title: "Titre de la proposition",
+    sec1: "I. Identification des Parties",
+    provider: "PRESTATAIRE",
+    client: "CLIENT",
+    sec2: "II. Contexte et Objet du Contrat",
+    scope: "Étendue des Services",
+    lblDesc: "Description", lblDeliv: "Livrables", lblParties: "Parties prenantes",
+    lblMetrics: "Indicateurs de succès", lblDuration: "Délai",
+    sec3: "III. Honoraires",
+    lblTotal: "Total", lblDown: "Acompte de 50%", lblBalance: "Solde de 50%",
+    sec4: "IV. Délai et Calendrier",
+    sec5: "V. Obligations des Parties",
+    sec6: "VI. Confidentialité et Propriété Intellectuelle",
+    sec7: "VII. Dispositions Finales",
+    forbidden: ["CONTRATADO", "CONTRATANTE", "Identificação das Partes", "Escopo de Serviços", "Honorários", "Cronograma", "Obrigações", "Confidencialidade", "Disposições Finais"],
+  },
+  en: {
+    langName: "English",
+    title: "Proposal Title",
+    sec1: "I. Identification of the Parties",
+    provider: "PROVIDER",
+    client: "CLIENT",
+    sec2: "II. Background and Purpose of the Agreement",
+    scope: "Scope of Services",
+    lblDesc: "Description", lblDeliv: "Deliverables", lblParties: "Stakeholders",
+    lblMetrics: "Success indicators", lblDuration: "Timeframe",
+    sec3: "III. Fees",
+    lblTotal: "Total", lblDown: "50% Down Payment", lblBalance: "50% Final Balance",
+    sec4: "IV. Timeline and Schedule",
+    sec5: "V. Obligations of the Parties",
+    sec6: "VI. Confidentiality and Intellectual Property",
+    sec7: "VII. Final Provisions",
+    forbidden: ["PRESTATAIRE", "CONTRATADO", "CONTRATANTE", "Honoraires", "Honorários", "Délai", "Livrables", "Description :", "Étendue", "attentes", "Escopo"],
+  },
+  es: {
+    langName: "español",
+    title: "Título de la propuesta",
+    sec1: "I. Identificación de las Partes",
+    provider: "PRESTADOR",
+    client: "CLIENTE",
+    sec2: "II. Contexto y Objeto del Contrato",
+    scope: "Alcance de los Servicios",
+    lblDesc: "Descripción", lblDeliv: "Entregables", lblParties: "Partes involucradas",
+    lblMetrics: "Indicadores de éxito", lblDuration: "Plazo",
+    sec3: "III. Honorarios",
+    lblTotal: "Total", lblDown: "Anticipo del 50%", lblBalance: "Saldo del 50%",
+    sec4: "IV. Plazo y Cronograma",
+    sec5: "V. Obligaciones de las Partes",
+    sec6: "VI. Confidencialidad y Propiedad Intelectual",
+    sec7: "VII. Disposiciones Finales",
+    forbidden: ["PRESTATAIRE", "CONTRATADO", "Honoraires", "Honorários", "Livrables", "Délai", "Étendue", "Escopo", "attentes"],
+  },
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -13,56 +105,61 @@ Deno.serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
     if (!meeting_report) throw new Error("meeting_report é obrigatório");
 
-    const lang = (["pt", "fr", "en", "es"].includes(language) ? language : "pt") as "pt" | "fr" | "en" | "es";
-    const langName = { pt: "português do Brasil", fr: "français", en: "English", es: "español" }[lang];
+    const lang: Lang = (["pt", "fr", "en", "es"].includes(language) ? language : "pt") as Lang;
+    const S = STRUCTURE[lang];
 
     const hasTotal = typeof total_amount === "number" && total_amount > 0;
 
-    const systemPrompt = `Você é um advogado sênior redator de propostas comerciais jurídicas (devis), multilíngue. Escreva uma proposta FORMAL, COMPLETA e DETALHADA, 100% em ${langName}, sem misturar idiomas. Não traduza nomes próprios, valores monetários, datas, números ou siglas.
+    const systemPrompt = `Você é um advogado sênior redator de propostas comerciais jurídicas (devis), multilíngue. Escreva uma proposta FORMAL, COMPLETA e DETALHADA, 100% em ${S.langName}, sem misturar idiomas. Não traduza nomes próprios, valores monetários, datas, números ou siglas.
 
-REGRAS DE CONTEÚDO (obrigatórias):
-- Personalize a proposta usando fatos concretos do relatório da reunião: contexto, partes envolvidas, pontos de dor, attentes, prazos, métricas, riscos. NUNCA escreva texto genérico.
-- NUNCA use placeholders entre colchetes do tipo "[Insérer le lieu]", "[Inserir cliente]", "[XXX]". Se um dado não estiver disponível, simplesmente omita a linha.
+REGRA CRÍTICA DE IDIOMA:
+- TODO o conteúdo (títulos de seção, labels de campo, corpo do texto) DEVE estar exclusivamente em ${S.langName}.
+- PROIBIDO usar versões bilíngues, barras "/" separando idiomas, ou qualquer palavra/expressão dos seguintes idiomas estrangeiros: ${S.forbidden.join(", ")}.
+- Use EXATAMENTE os títulos e labels fornecidos abaixo — não invente variantes, não adicione tradução entre parênteses.
+
+REGRAS DE CONTEÚDO:
+- Personalize a proposta usando fatos concretos do relatório da reunião: contexto, partes envolvidas, pontos de dor, expectativas, prazos, métricas, riscos. NUNCA escreva texto genérico.
+- NUNCA use placeholders entre colchetes do tipo "[Inserir cliente]", "[XXX]". Se um dado não estiver disponível, simplesmente omita a linha.
 - Tom formal jurídico, parágrafos bem construídos (não bullets soltos no texto corrido).
 
-ESTRUTURA OBRIGATÓRIA DO CAMPO proposal_structure (Markdown, nesta ordem):
+ESTRUTURA OBRIGATÓRIA DO CAMPO proposal_structure (Markdown, nesta ordem, com os títulos EXATOS abaixo em ${S.langName}):
 
-# {Título da proposta}
+# {${S.title}}
 
-## I. Identification des Parties / Identificação das Partes
-- **PRESTATAIRE / CONTRATADO:** Lundgaard Jensen Advocacia e Consultoria Internacional
-- **CLIENT / CONTRATANTE:** {nome do cliente, e demais dados disponíveis}
+## ${S.sec1}
+- **${S.provider}:** Lundgaard Jensen Advocacia e Consultoria Internacional
+- **${S.client}:** {nome do cliente e demais dados disponíveis}
 
-## II. Contexte et Objet du Contrat
+## ${S.sec2}
 2 a 4 parágrafos densos descrevendo: (a) o contexto da reunião e situação atual do cliente, (b) o problema/desafio identificado, (c) o objetivo geral da contratação, (d) o resultado esperado. Citar fatos específicos do relatório.
 
-### Étendue des Services / Escopo de Serviços
-Lista A) B) C)... (no mínimo 3, idealmente 4–6 itens). Para CADA item siga EXATAMENTE este formato:
+### ${S.scope}
+Lista A) B) C)... (no mínimo 3, idealmente 4–6 itens). Para CADA item siga EXATAMENTE este formato (labels em ${S.langName}):
 
-**A) Título do serviço — VALOR BRL**
-*Description :* 3 a 6 frases descrevendo o serviço em profundidade, com base no relatório.
-*Livrables :* lista curta dos entregáveis concretos (documentos, pareceres, atos).
-*Parties prenantes :* quem participa (cliente, cabinet, notaire, architecte, etc.).
-*Indicateurs de succès :* critérios mensuráveis de conclusão.
-*Délai :* prazo estimado dessa etapa.
+**A) Título do serviço — BRL VALOR**
+*${S.lblDesc}:* 3 a 6 frases descrevendo o serviço em profundidade, com base no relatório.
+*${S.lblDeliv}:* lista curta dos entregáveis concretos (documentos, pareceres, atos).
+*${S.lblParties}:* quem participa (cliente, escritório, notário, arquiteto, etc.).
+*${S.lblMetrics}:* critérios mensuráveis de conclusão.
+*${S.lblDuration}:* prazo estimado dessa etapa.
 
-## III. Honoraires / Honorários
-- Detalhar o **Total** dos serviços (deve bater EXATAMENTE com a soma dos itens A+B+C+...).
-- **Entrada de 50%** na assinatura: valor em BRL.
-- **Saldo de 50%** na conclusão: valor em BRL.
+## ${S.sec3}
+- Detalhar o **${S.lblTotal}** dos serviços (deve bater EXATAMENTE com a soma dos itens A+B+C+...).
+- **${S.lblDown}** na assinatura: valor em BRL.
+- **${S.lblBalance}** na conclusão: valor em BRL.
 - Condições de pagamento, forma (PIX/transferência), prazo de pagamento das parcelas.
 - Cláusula curta de reajuste por IPCA caso a execução ultrapasse 12 meses.
 
-## IV. Délai et Calendrier
+## ${S.sec4}
 Cronograma por fase, com marcos (kickoff, entregas intermediárias, encerramento). Datas relativas (ex.: "D+15", "D+30") quando não houver datas fixas no relatório.
 
-## V. Obligations des Parties
-Parágrafo curto descrevendo obrigações do prestataire (diligência, confidencialidade, relatórios periódicos) e do cliente (fornecer documentos, decisões tempestivas, pagamento).
+## ${S.sec5}
+Parágrafo curto descrevendo obrigações do prestador (diligência, confidencialidade, relatórios periódicos) e do cliente (fornecer documentos, decisões tempestivas, pagamento).
 
-## VI. Confidentialité et Propriété Intellectuelle
-Parágrafo padrão jurídico (sigilo, NDA implícito, titularidade dos pareceres permanecendo do prestataire com licença de uso ao cliente).
+## ${S.sec6}
+Parágrafo padrão jurídico (sigilo, NDA implícito, titularidade dos pareceres permanecendo do prestador com licença de uso ao cliente).
 
-## VII. Dispositions Finales
+## ${S.sec7}
 Foro de eleição (Fortaleza/CE, salvo indicação em contrário no relatório), rescisão por inadimplemento, vigência até a conclusão dos serviços ou 12 meses (o que ocorrer primeiro).
 
 REGRAS DE VALORES (CRÍTICAS):
@@ -71,7 +168,7 @@ ${
     ? `- O cliente já definiu um VALOR TOTAL de R$ ${total_amount}. Distribua esse valor entre os itens de escopo proporcionalmente ao esforço de cada um. A soma dos amounts dos scope_items DEVE ser EXATAMENTE ${total_amount}. total_amount no retorno = ${total_amount}.`
     : `- O cliente NÃO informou valor total. Você DEVE ESTIMAR valores de mercado brasileiros plausíveis para cada item de escopo (em BRL), considerando complexidade jurídica. Faixas de referência (BRL):
   • Due diligence imobiliária completa: 15.000 a 60.000
-  • Constituição de sociedade (LTDA/SA) com avenant: 8.000 a 25.000
+  • Constituição de sociedade (LTDA/SA) com aditivo: 8.000 a 25.000
   • Acompanhamento de procedimentos urbanísticos (licenças, alvarás): 10.000 a 40.000
   • Consultoria estratégica / negociação contratual pontual: 5.000 a 20.000
   • Pareceres jurídicos especializados: 4.000 a 15.000
@@ -86,7 +183,7 @@ ${
 ${meeting_report}
 
 ${hasTotal ? `Valor total alvo: R$ ${total_amount}\n` : "O cliente NÃO informou valor total — estime conforme as faixas do system prompt.\n"}
-Gere a proposta jurídica completa em ${langName}, seguindo TODAS as seções obrigatórias (I a VII) e o formato detalhado de cada item de escopo. Personalize tudo com base no relatório acima.`;
+Gere a proposta jurídica completa em ${S.langName}, seguindo TODAS as seções obrigatórias (I a VII) com os títulos e labels EXATOS fornecidos. Não use bilíngue, não use barras, não misture idiomas. Personalize tudo com base no relatório acima.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -119,7 +216,7 @@ Gere a proposta jurídica completa em ${langName}, seguindo TODAS as seções ob
                   proposal_structure: {
                     type: "string",
                     description:
-                      "Texto Markdown COMPLETO da proposta, contendo OBRIGATORIAMENTE as 7 seções I a VII conforme instruído. Mínimo ~2500 caracteres.",
+                      "Texto Markdown COMPLETO da proposta, contendo OBRIGATORIAMENTE as 7 seções I a VII conforme instruído, 100% no idioma alvo, SEM bilíngue, SEM barras. Mínimo ~2500 caracteres.",
                   },
                   scope_items: {
                     type: "array",
