@@ -1,4 +1,4 @@
-// Extrai transações de um extrato bancário PDF usando Lovable AI (visão)
+// Extrai transações de um extrato bancário PDF usando OpenAI (chat.completions com PDF)
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -9,22 +9,28 @@ Deno.serve(async (req) => {
 
   try {
     const { fileBase64, fileName } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada");
     if (!fileBase64) throw new Error("fileBase64 é obrigatório");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-5-mini",
         messages: [
           { role: "system", content: "Extraia TODAS as transações de um extrato bancário. Datas em ISO (YYYY-MM-DD). Valores em número (positivo crédito, negativo débito)." },
           {
             role: "user",
             content: [
               { type: "text", text: `Analise o extrato${fileName ? ` "${fileName}"` : ""} e extraia todas as transações.` },
-              { type: "image_url", image_url: { url: `data:application/pdf;base64,${fileBase64}` } },
+              {
+                type: "file",
+                file: {
+                  filename: fileName || "extrato.pdf",
+                  file_data: `data:application/pdf;base64,${fileBase64}`,
+                },
+              },
             ],
           },
         ],
@@ -61,9 +67,9 @@ Deno.serve(async (req) => {
       }),
     });
 
-    if (response.status === 429) return new Response(JSON.stringify({ error: "Limite de requisições atingido." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA esgotados." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    if (!response.ok) { const t = await response.text(); console.error("AI error:", response.status, t); throw new Error(`AI gateway: ${response.status}`); }
+    if (response.status === 429) return new Response(JSON.stringify({ error: "Limite de requisições da OpenAI atingido." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (response.status === 401) return new Response(JSON.stringify({ error: "Chave OPENAI_API_KEY inválida." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!response.ok) { const t = await response.text(); console.error("OpenAI error:", response.status, t); throw new Error(`OpenAI: ${response.status}`); }
 
     const result = await response.json();
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];

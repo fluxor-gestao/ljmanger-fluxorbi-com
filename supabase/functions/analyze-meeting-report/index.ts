@@ -1,4 +1,4 @@
-// Analisa ata de reunião (PDF/imagem/texto) e extrai cliente + estrutura de devis
+// Analisa ata de reunião (PDF/imagem/texto) e extrai cliente + estrutura de devis — OpenAI
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -9,8 +9,8 @@ Deno.serve(async (req) => {
 
   try {
     const { file_base64, file_name, mime_type, language_hint } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada");
     if (!file_base64) throw new Error("file_base64 é obrigatório");
 
     const langInstr = language_hint && language_hint !== "auto" ? `O idioma do documento é ${language_hint} — use este idioma em toda a saída.` : "Detecte automaticamente o idioma do documento.";
@@ -37,21 +37,29 @@ Sua tarefa: extrair (1) idioma detectado, (2) dados do cliente, (3) resumo da re
     ];
     if (mime_type?.startsWith("image/")) {
       userContent.push({ type: "image_url", image_url: { url: `data:${mime_type};base64,${file_base64}` } });
+    } else if (mime_type === "application/pdf") {
+      // OpenAI chat.completions aceita PDF via tipo "file"
+      userContent.push({
+        type: "file",
+        file: { filename: file_name || "document.pdf", file_data: `data:application/pdf;base64,${file_base64}` },
+      });
     } else {
-      // PDF/texto: enviamos como texto decodificado se possível
       try {
         const decoded = atob(file_base64);
         userContent.push({ type: "text", text: `Conteúdo do arquivo:\n${decoded.slice(0, 50000)}` });
       } catch {
-        userContent.push({ type: "image_url", image_url: { url: `data:${mime_type || "application/pdf"};base64,${file_base64}` } });
+        userContent.push({
+          type: "file",
+          file: { filename: file_name || "document", file_data: `data:${mime_type || "application/octet-stream"};base64,${file_base64}` },
+        });
       }
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-5-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userContent },
@@ -104,9 +112,9 @@ Sua tarefa: extrair (1) idioma detectado, (2) dados do cliente, (3) resumo da re
       }),
     });
 
-    if (response.status === 429) return new Response(JSON.stringify({ error: "Limite de requisições atingido." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA esgotados." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    if (!response.ok) { const t = await response.text(); console.error("AI error:", response.status, t); throw new Error(`AI gateway: ${response.status}`); }
+    if (response.status === 429) return new Response(JSON.stringify({ error: "Limite de requisições da OpenAI atingido." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (response.status === 401) return new Response(JSON.stringify({ error: "Chave OPENAI_API_KEY inválida." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!response.ok) { const t = await response.text(); console.error("OpenAI error:", response.status, t); throw new Error(`OpenAI: ${response.status}`); }
 
     const result = await response.json();
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
