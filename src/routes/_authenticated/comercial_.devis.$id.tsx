@@ -164,7 +164,7 @@ function DevisDetail() {
         setForm((f: any) => ({ ...f, total_amount: total, down_payment_amount: down }));
       }
       if (p.title && !form.title) setForm((f: any) => ({ ...f, title: p.title }));
-      toast.success(tier === "final" ? "Proposta refinada com GPT-5!" : "Proposta gerada (GPT-5 mini).");
+      toast.success(tier === "final" ? "Proposta refinada!" : "Proposta gerada.");
     } catch (e: any) {
       toast.error(e.message || "Erro ao gerar proposta");
     } finally {
