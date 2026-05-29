@@ -135,7 +135,7 @@ function DevisDetail() {
   });
 
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (tier: "draft" | "final" = "draft") => {
     if (!form.meeting_report?.trim()) return;
     setGenerating(true);
     try {
@@ -145,6 +145,7 @@ function DevisDetail() {
           meeting_report: form.meeting_report,
           client_name: client?.name,
           total_amount: Number(form.total_amount) || undefined,
+          tier,
         },
       });
       if (error) throw error;
@@ -163,6 +164,7 @@ function DevisDetail() {
         setForm((f: any) => ({ ...f, total_amount: total, down_payment_amount: down }));
       }
       if (p.title && !form.title) setForm((f: any) => ({ ...f, title: p.title }));
+      toast.success(tier === "final" ? "Proposta refinada com GPT-5!" : "Proposta gerada (GPT-5 mini).");
     } catch (e: any) {
       toast.error(e.message || "Erro ao gerar proposta");
     } finally {
