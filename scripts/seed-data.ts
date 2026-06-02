@@ -151,14 +151,20 @@ function remapRow(row: Record<string, unknown>, cols?: string[]): Record<string,
   return out;
 }
 
-async function insertChunked(table: string, rows: Record<string, unknown>[]) {
+async function insertChunked(
+  table: string,
+  rows: Record<string, unknown>[],
+  upsertOn?: string,
+) {
   if (rows.length === 0) return;
   const CHUNK = 200;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
-    const { error } = await newDb.from(table).insert(chunk);
+    const { error } = upsertOn
+      ? await newDb.from(table).upsert(chunk, { onConflict: upsertOn })
+      : await newDb.from(table).insert(chunk);
     if (error) {
-      console.error(`  ✗ insert ${table} chunk ${i}: ${error.message}`);
+      console.error(`  ✗ ${upsertOn ? "upsert" : "insert"} ${table} chunk ${i}: ${error.message}`);
       // grava o chunk problemático para inspeção
       writeFileSync(`./export/_failed_${table}_${i}.json`, JSON.stringify(chunk, null, 2));
       throw error;
