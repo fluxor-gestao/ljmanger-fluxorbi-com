@@ -94,6 +94,7 @@ type TableSpec = {
   name: string;
   userIdCols?: string[];     // colunas que apontam para auth.users(id)
   orderBy?: string;          // coluna para paginação estável
+  upsertOn?: string;         // se setado, usa upsert com onConflict nessa coluna
 };
 
 const TABLES: TableSpec[] = [
@@ -114,7 +115,11 @@ const TABLES: TableSpec[] = [
   { name: "email_send_state",        orderBy: "id" },
   { name: "email_unsubscribe_tokens", orderBy: "created_at" },
   { name: "suppressed_emails",       orderBy: "created_at" },
-  { name: "profiles",                orderBy: "created_at",  userIdCols: ["user_id"] },
+  // profiles: o trigger handle_new_user (em auth.users) cria uma linha vazia
+  // assim que migrate-users.ts insere o usuário no destino. Para evitar
+  // colisão em UNIQUE(profiles.user_id) durante o seed, usamos upsert com
+  // onConflict=user_id — os dados originais sobrescrevem o stub do trigger.
+  { name: "profiles",                orderBy: "created_at",  userIdCols: ["user_id"], upsertOn: "user_id" },
   { name: "user_roles",              orderBy: "id",          userIdCols: ["user_id"] },
 ];
 
