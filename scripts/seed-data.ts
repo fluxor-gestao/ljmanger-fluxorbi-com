@@ -190,8 +190,8 @@ async function main() {
     process.stdout.write(`fetched=${rows.length}`);
 
     if (!DRY_RUN) {
-      await insertChunked(spec.name, remapped);
-      process.stdout.write(`  inserted=${remapped.length}`);
+      await insertChunked(spec.name, remapped, spec.upsertOn);
+      process.stdout.write(`  ${spec.upsertOn ? "upserted" : "inserted"}=${remapped.length}`);
     }
     process.stdout.write("\n");
   }
