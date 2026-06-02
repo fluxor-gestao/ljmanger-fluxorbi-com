@@ -94,6 +94,7 @@ type TableSpec = {
   name: string;
   userIdCols?: string[];     // colunas que apontam para auth.users(id)
   orderBy?: string;          // coluna para paginação estável
+  upsertOn?: string;         // se setado, usa upsert com onConflict nessa coluna
 };
 
 const TABLES: TableSpec[] = [
@@ -114,7 +115,11 @@ const TABLES: TableSpec[] = [
   { name: "email_send_state",        orderBy: "id" },
   { name: "email_unsubscribe_tokens", orderBy: "created_at" },
   { name: "suppressed_emails",       orderBy: "created_at" },
-  { name: "profiles",                orderBy: "created_at",  userIdCols: ["user_id"] },
+  // profiles: o trigger handle_new_user (em auth.users) cria uma linha vazia
+  // assim que migrate-users.ts insere o usuário no destino. Para evitar
+  // colisão em UNIQUE(profiles.user_id) durante o seed, usamos upsert com
+  // onConflict=user_id — os dados originais sobrescrevem o stub do trigger.
+  { name: "profiles",                orderBy: "created_at",  userIdCols: ["user_id"], upsertOn: "user_id" },
   { name: "user_roles",              orderBy: "id",          userIdCols: ["user_id"] },
 ];
 
@@ -146,14 +151,20 @@ function remapRow(row: Record<string, unknown>, cols?: string[]): Record<string,
   return out;
 }
 
-async function insertChunked(table: string, rows: Record<string, unknown>[]) {
+async function insertChunked(
+  table: string,
+  rows: Record<string, unknown>[],
+  upsertOn?: string,
+) {
   if (rows.length === 0) return;
   const CHUNK = 200;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
-    const { error } = await newDb.from(table).insert(chunk);
+    const { error } = upsertOn
+      ? await newDb.from(table).upsert(chunk, { onConflict: upsertOn })
+      : await newDb.from(table).insert(chunk);
     if (error) {
-      console.error(`  ✗ insert ${table} chunk ${i}: ${error.message}`);
+      console.error(`  ✗ ${upsertOn ? "upsert" : "insert"} ${table} chunk ${i}: ${error.message}`);
       // grava o chunk problemático para inspeção
       writeFileSync(`./export/_failed_${table}_${i}.json`, JSON.stringify(chunk, null, 2));
       throw error;
@@ -179,8 +190,8 @@ async function main() {
     process.stdout.write(`fetched=${rows.length}`);
 
     if (!DRY_RUN) {
-      await insertChunked(spec.name, remapped);
-      process.stdout.write(`  inserted=${remapped.length}`);
+      await insertChunked(spec.name, remapped, spec.upsertOn);
+      process.stdout.write(`  ${spec.upsertOn ? "upserted" : "inserted"}=${remapped.length}`);
     }
     process.stdout.write("\n");
   }
@@ -190,6 +201,8 @@ async function main() {
   if (!DRY_RUN) {
     console.log("\nLEMBRETE: verifique se desabilitou os triggers:");
     console.log("  trg_devis_accepted_create_service / trg_devis_accepted_create_charge");
+    console.log("  (note: 'trg_devis_accepted_charge' SEM 'create' é o nome da FUNÇÃO,");
+    console.log("   não o do trigger — não usar em ALTER TABLE ... DISABLE TRIGGER)");
     console.log("  e reabilite-os após a validação.");
   }
 }
