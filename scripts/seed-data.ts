@@ -201,6 +201,8 @@ async function main() {
   if (!DRY_RUN) {
     console.log("\nLEMBRETE: verifique se desabilitou os triggers:");
     console.log("  trg_devis_accepted_create_service / trg_devis_accepted_create_charge");
+    console.log("  (note: 'trg_devis_accepted_charge' SEM 'create' é o nome da FUNÇÃO,");
+    console.log("   não o do trigger — não usar em ALTER TABLE ... DISABLE TRIGGER)");
     console.log("  e reabilite-os após a validação.");
   }
 }
